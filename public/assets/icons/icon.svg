@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="Auto Glow Pro">
+  <rect width="512" height="512" rx="96" fill="#101418"/>
+  <circle cx="382" cy="122" r="42" fill="#00ff88" opacity=".18"/>
+  <path d="M128 328h256l-24-96c-8-31-28-48-60-48h-88c-32 0-52 17-60 48l-24 96Z" fill="#00ff88"/>
+  <path d="M158 306h196l-15-58c-5-19-18-30-39-30h-88c-21 0-34 11-39 30l-15 58Z" fill="#101418"/>
+  <circle cx="178" cy="344" r="34" fill="#f4f7f5"/>
+  <circle cx="334" cy="344" r="34" fill="#f4f7f5"/>
+  <path d="M126 160h102l-52 78h94l-124 118 39-86h-79l20-110Z" fill="#f8d84a"/>
+</svg>

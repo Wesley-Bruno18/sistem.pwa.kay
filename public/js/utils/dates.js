@@ -1,0 +1,115 @@
+export const BUSINESS_START = 8 * 60
+export const BUSINESS_END = 18 * 60
+export const SATURDAY_END = 12 * 60
+
+export function parseDate(value) {
+  if (typeof value === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(value)) {
+    const [year, month, day] = value.split('-').map(Number)
+    return new Date(year, month - 1, day)
+  }
+
+  return new Date(value)
+}
+
+export function pad(value) {
+  return String(value).padStart(2, '0')
+}
+
+export function toDateKey(date) {
+  const value = parseDate(date)
+  return `${value.getFullYear()}-${pad(value.getMonth() + 1)}-${pad(value.getDate())}`
+}
+
+export function todayKey() {
+  return toDateKey(new Date())
+}
+
+export function addDays(date, amount) {
+  const next = parseDate(date)
+  next.setDate(next.getDate() + amount)
+  return next
+}
+
+export function getWeekStart(date = new Date()) {
+  const value = parseDate(date)
+  const day = value.getDay()
+  const diff = day === 0 ? -6 : 1 - day
+  return addDays(value, diff)
+}
+
+export function getWeekDays(startDate) {
+  return Array.from({ length: 7 }, (_, index) => addDays(startDate, index))
+}
+
+export function monthBounds(date) {
+  const value = parseDate(date)
+  const start = new Date(value.getFullYear(), value.getMonth(), 1)
+  const end = new Date(value.getFullYear(), value.getMonth() + 1, 0)
+  return { start, end }
+}
+
+export function getMonthGrid(date) {
+  const { start, end } = monthBounds(date)
+  const gridStart = addDays(start, -((start.getDay() + 6) % 7))
+  const days = []
+
+  for (let index = 0; index < 42; index += 1) {
+    const day = addDays(gridStart, index)
+    days.push({
+      date: day,
+      key: toDateKey(day),
+      inMonth: day.getMonth() === start.getMonth(),
+      isToday: toDateKey(day) === todayKey()
+    })
+  }
+
+  return { days, start, end }
+}
+
+export function formatDisplayDate(date, options = {}) {
+  return new Intl.DateTimeFormat('pt-BR', options).format(parseDate(date))
+}
+
+export function formatCurrency(value) {
+  return new Intl.NumberFormat('pt-BR', {
+    style: 'currency',
+    currency: 'BRL'
+  }).format(Number(value || 0))
+}
+
+export function formatTime(value) {
+  if (!value) return ''
+  const [hour, minute] = String(value).split(':')
+  return `${pad(hour)}:${pad(minute || '00')}`
+}
+
+export function isThirtyMinuteSlot(value) {
+  const [, minute] = formatTime(value).split(':').map(Number)
+  return minute === 0 || minute === 30
+}
+
+export function slotsForDay(date) {
+  const day = parseDate(date).getDay()
+  if (day === 0) return []
+
+  const end = day === 6 ? SATURDAY_END : BUSINESS_END
+  const slots = []
+
+  for (let minutes = BUSINESS_START; minutes < end; minutes += 30) {
+    slots.push(`${pad(Math.floor(minutes / 60))}:${pad(minutes % 60)}`)
+  }
+
+  return slots
+}
+
+export function statusLabel(status) {
+  const labels = {
+    agendado: 'Agendado',
+    concluido: 'Concluido',
+    cancelado: 'Cancelado',
+    ativo: 'Ativo',
+    inativo: 'Inativo'
+  }
+
+  return labels[status] || status
+}

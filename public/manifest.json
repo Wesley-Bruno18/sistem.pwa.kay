@@ -1,0 +1,45 @@
+{
+  "name": "Auto Glow Pro",
+  "short_name": "AutoGlow",
+  "description": "PWA de gestao para estetica automotiva com Supabase.",
+  "start_url": "./index.html",
+  "scope": "./",
+  "display": "standalone",
+  "display_override": ["window-controls-overlay", "standalone", "browser"],
+  "background_color": "#0b0f12",
+  "theme_color": "#00ff88",
+  "orientation": "portrait-primary",
+  "icons": [
+    {
+      "src": "./assets/icons/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "./assets/icons/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "./assets/icons/icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "Agenda",
+      "short_name": "Agenda",
+      "url": "./index.html#agenda"
+    },
+    {
+      "name": "Estoque",
+      "short_name": "Estoque",
+      "url": "./index.html#estoque"
+    }
+  ],
+  "categories": ["business", "productivity"]
+}
