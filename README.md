@@ -60,4 +60,4 @@ npx serve public
 - A RPC `concluir_servico` executa a baixa de estoque em transacao no Supabase.
 - A RPC `reservar_agendamento_prioritario` permite 2 vagas por horario e resolve disputa por prioridade: Ouro > Prata > Bronze.
 - Para testes rapidos, desative confirmacao de email no Supabase Auth ou confirme o email antes do login.
-- O plano de moto "So para manter" custa R$69,99.
+- O plano de moto "So para manter" custa R$69,99 .
