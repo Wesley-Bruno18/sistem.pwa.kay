@@ -280,6 +280,13 @@ a {
   margin-bottom: 16px;
 }
 
+.client-tabs {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 8px;
+  margin-bottom: 18px;
+}
+
 .auth-tab,
 .secondary-button,
 .ghost-button,
@@ -349,6 +356,11 @@ a {
 .field-grid {
   display: grid;
   gap: 12px;
+}
+
+.profile-form {
+  display: grid;
+  gap: 14px;
 }
 
 .button-row {
@@ -952,6 +964,10 @@ a {
   .topbar-actions {
     flex-wrap: wrap;
     justify-content: flex-end;
+  }
+
+  .client-tabs {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
   .stacked-mobile,

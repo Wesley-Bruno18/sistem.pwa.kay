@@ -1,6 +1,7 @@
-import { supabase } from './supabase.js'
+import { SUPABASE_ANON_KEY, SUPABASE_URL, supabase } from './supabase.js'
 
 const runtimeConfig = window.MERCADO_PAGO_CONFIG || {}
+const EDGE_FUNCTION_TIMEOUT = 25000
 
 export const MERCADO_PAGO_PUBLIC_KEY =
   runtimeConfig.publicKey ||
@@ -31,16 +32,48 @@ export async function loadMercadoPagoSdk() {
 }
 
 async function invokeMercadoPago(action, payload = {}) {
-  const { data, error } = await supabase.functions.invoke('mercado-pago-payments', {
-    body: {
-      action,
-      ...payload
-    }
-  })
+  const {
+    data: { session }
+  } = await supabase.auth.getSession()
+  const controller = new AbortController()
+  const timeoutId = window.setTimeout(() => controller.abort(), EDGE_FUNCTION_TIMEOUT)
 
-  if (error) throw error
-  if (data?.error) throw new Error(data.error)
-  return data
+  try {
+    const response = await fetch(`${SUPABASE_URL}/functions/v1/mercado-pago-payments`, {
+      method: 'POST',
+      signal: controller.signal,
+      headers: {
+        apikey: SUPABASE_ANON_KEY,
+        Authorization: `Bearer ${session?.access_token || SUPABASE_ANON_KEY}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        action,
+        ...payload
+      })
+    })
+
+    const text = await response.text()
+    let data = {}
+    try {
+      data = text ? JSON.parse(text) : {}
+    } catch {
+      data = { error: text }
+    }
+
+    if (!response.ok || data?.error) {
+      throw new Error(data?.error || data?.message || 'Nao foi possivel processar o pagamento.')
+    }
+
+    return data
+  } catch (error) {
+    if (error?.name === 'AbortError') {
+      throw new Error('O Mercado Pago demorou para responder. Tente novamente em instantes.')
+    }
+    throw error
+  } finally {
+    window.clearTimeout(timeoutId)
+  }
 }
 
 export function createPixPayment({ planId }) {

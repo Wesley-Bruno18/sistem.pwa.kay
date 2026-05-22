@@ -5,6 +5,7 @@ import {
   getPlans,
   getUserAppointments,
   getVehicle,
+  updateClientProfile,
   updateAppointmentStatus
 } from '../services/db.js'
 import {
@@ -45,7 +46,10 @@ import {
 export function renderClientDashboard({ app, session, profile, onLogout }) {
   const state = {
     weekStart: getWeekStart(),
-    selectedSlot: null
+    selectedSlot: null,
+    activeView: 'plans',
+    data: null,
+    hasLoaded: false
   }
 
   app.innerHTML = `
@@ -58,10 +62,13 @@ export function renderClientDashboard({ app, session, profile, onLogout }) {
   `
 
   document.querySelector('#logoutButton').addEventListener('click', onLogout)
+  bindClientActions({ refresh, state, session, profile })
 
-  async function refresh() {
+  async function refresh({ silent = false } = {}) {
     const content = document.querySelector('#clientContent')
-    content.innerHTML = '<div class="loading-card">Atualizando dados...</div>'
+    if (!silent || !state.hasLoaded) {
+      content.innerHTML = '<div class="loading-card">Atualizando dados...</div>'
+    }
 
     try {
       const start = toDateKey(state.weekStart)
@@ -75,18 +82,22 @@ export function renderClientDashboard({ app, session, profile, onLogout }) {
           getBookedSlotsBetween(start, end)
         ])
 
-      content.innerHTML = renderContent({
-        profile,
+      state.data = {
         plans,
         subscription,
         vehicle,
         userAppointments,
-        weekAppointments,
+        weekAppointments
+      }
+      state.hasLoaded = true
+
+      content.innerHTML = renderContent({
+        profile,
+        ...state.data,
         state
       })
 
       notifyPriorityLoss(userAppointments)
-      bindClientActions({ refresh, state, session, plans, vehicle })
     } catch (error) {
       showError(error)
       content.innerHTML = emptyState('Nao foi possivel carregar', 'Confira a conexao com o Supabase.')
@@ -121,6 +132,55 @@ function renderContent(data) {
       </article>
     </section>
 
+    <nav class="client-tabs" aria-label="Area do cliente">
+      <button class="auth-tab ${data.state.activeView === 'plans' ? 'is-active' : ''}" type="button" data-client-view="plans">Planos</button>
+      <button class="auth-tab ${data.state.activeView === 'schedule' ? 'is-active' : ''}" type="button" data-client-view="schedule">Agenda</button>
+      <button class="auth-tab ${data.state.activeView === 'history' ? 'is-active' : ''}" type="button" data-client-view="history">Historico</button>
+      <button class="auth-tab ${data.state.activeView === 'profile' ? 'is-active' : ''}" type="button" data-client-view="profile">Perfil</button>
+    </nav>
+
+    ${renderActiveClientView(data)}
+  `
+}
+
+function renderActiveClientView(data) {
+  if (data.state.activeView === 'schedule') {
+    return `
+      <section class="section-block">
+        <div class="section-heading">
+          <div>
+            <p class="eyebrow">Agenda</p>
+            <h2>Calendario semanal</h2>
+          </div>
+          <div class="button-row">
+            <button class="secondary-button" type="button" data-week-prev>Anterior</button>
+            <button class="secondary-button" type="button" data-week-next>Proxima</button>
+          </div>
+        </div>
+        ${renderSchedule(data.weekAppointments, data.subscription, data.state)}
+      </section>
+    `
+  }
+
+  if (data.state.activeView === 'history') {
+    return `
+      <section class="section-block">
+        <div class="section-heading">
+          <div>
+            <p class="eyebrow">Historico</p>
+            <h2>Meus agendamentos</h2>
+          </div>
+        </div>
+        ${renderUserAppointments(data.userAppointments)}
+      </section>
+    `
+  }
+
+  if (data.state.activeView === 'profile') {
+    return renderProfile(data.profile, data.vehicle)
+  }
+
+  return `
     <section class="section-block">
       <div class="section-heading">
         <div>
@@ -132,29 +192,60 @@ function renderContent(data) {
         ${renderPlans(data.plans, data.subscription, data.vehicle)}
       </div>
     </section>
+  `
+}
 
+function renderProfile(profile, vehicle) {
+  const vehicleType = vehicle?.categoria || 'passeio'
+
+  return `
     <section class="section-block">
       <div class="section-heading">
         <div>
-          <p class="eyebrow">Agenda</p>
-          <h2>Calendario semanal</h2>
+          <p class="eyebrow">Perfil</p>
+          <h2>Meus dados</h2>
+        </div>
+      </div>
+      <form id="clientProfileForm" class="form-panel profile-form">
+        <div class="field-grid">
+          <label>
+            Nome
+            <input name="name" type="text" value="${escapeHtml(profile?.nome || '')}" autocomplete="name" required />
+          </label>
+          <label>
+            Email
+            <input name="email" type="email" value="${escapeHtml(profile?.email || '')}" readonly />
+          </label>
+        </div>
+        <div class="field-grid">
+          <label>
+            Placa
+            <input name="plate" type="text" maxlength="8" value="${escapeHtml(vehicle?.placa || '')}" placeholder="ABC1D23" required />
+          </label>
+          <label>
+            Modelo
+            <input name="model" type="text" value="${escapeHtml(vehicle?.modelo || '')}" placeholder="Civic, Corolla..." required />
+          </label>
+        </div>
+        <div class="field-grid">
+          <label>
+            Cor
+            <input name="color" type="text" value="${escapeHtml(vehicle?.cor === 'Nao informado' ? '' : vehicle?.cor || '')}" placeholder="Preto, prata... (opcional)" />
+          </label>
+          <label>
+            Tipo do veiculo
+            <select name="vehicleType" required>
+              <option value="passeio" ${vehicleType === 'passeio' ? 'selected' : ''}>Carro de passeio</option>
+              <option value="suv" ${vehicleType === 'suv' ? 'selected' : ''}>SUV</option>
+              <option value="picape" ${vehicleType === 'picape' ? 'selected' : ''}>Picape</option>
+              <option value="moto" ${vehicleType === 'moto' ? 'selected' : ''}>Moto</option>
+            </select>
+          </label>
         </div>
         <div class="button-row">
-          <button class="secondary-button" type="button" data-week-prev>Anterior</button>
-          <button class="secondary-button" type="button" data-week-next>Proxima</button>
+          <button class="primary-button" type="submit">Salvar alteracoes</button>
         </div>
-      </div>
-      ${renderSchedule(data.weekAppointments, data.subscription, data.state)}
-    </section>
-
-    <section class="section-block">
-      <div class="section-heading">
-        <div>
-          <p class="eyebrow">Historico</p>
-          <h2>Meus agendamentos</h2>
-        </div>
-      </div>
-      ${renderUserAppointments(data.userAppointments)}
+      </form>
     </section>
   `
 }
@@ -304,24 +395,34 @@ function renderUserAppointments(appointments) {
   `
 }
 
-function bindClientActions({ refresh, state, session, plans, vehicle }) {
+function bindClientActions({ refresh, state, session, profile }) {
   const content = document.querySelector('#clientContent')
 
   content.addEventListener('click', async (event) => {
-    const target = event.target.closest('button')
+    const target = event.target instanceof Element ? event.target.closest('button') : null
     if (!target) return
+    event.preventDefault()
+    event.stopPropagation()
+
+    if (target.matches('[data-client-view]')) {
+      state.activeView = target.dataset.clientView
+      await refresh({ silent: true })
+      return
+    }
 
     if (target.matches('[data-week-prev]')) {
       state.weekStart = addDays(state.weekStart, -7)
       state.selectedSlot = null
-      refresh()
+      state.activeView = 'schedule'
+      await refresh({ silent: true })
       return
     }
 
     if (target.matches('[data-week-next]')) {
       state.weekStart = addDays(state.weekStart, 7)
       state.selectedSlot = null
-      refresh()
+      state.activeView = 'schedule'
+      await refresh({ silent: true })
       return
     }
 
@@ -330,11 +431,14 @@ function bindClientActions({ refresh, state, session, plans, vehicle }) {
         date: target.dataset.slotDate,
         time: target.dataset.slotTime
       }
-      refresh()
+      state.activeView = 'schedule'
+      await refresh({ silent: true })
       return
     }
 
     if (target.matches('[data-payment-plan]')) {
+      const plans = state.data?.plans || []
+      const vehicle = state.data?.vehicle || null
       const plan = plans.find((item) => item.id === target.dataset.paymentPlan)
       if (!plan) return
 
@@ -371,7 +475,7 @@ function bindClientActions({ refresh, state, session, plans, vehicle }) {
           showToast(`Lembrete simulado: horario em ${selectedSlot.date} das ${formatSlotRange(selectedSlot.time)}.`, 'warning')
         }, 4500)
         state.selectedSlot = null
-        refresh()
+        await refresh({ silent: true })
       } catch (error) {
         showError(error)
       } finally {
@@ -387,10 +491,50 @@ function bindClientActions({ refresh, state, session, plans, vehicle }) {
       try {
         await updateAppointmentStatus(target.dataset.cancelAppointment, 'cancelado')
         showToast('Agendamento cancelado.')
-        refresh()
+        await refresh({ silent: true })
       } catch (error) {
         showError(error)
       }
+    }
+  })
+
+  content.addEventListener('submit', async (event) => {
+    if (!event.target.matches('#clientProfileForm')) return
+    event.preventDefault()
+    event.stopPropagation()
+
+    const form = event.target
+    if (!form.checkValidity()) {
+      form.reportValidity()
+      return
+    }
+
+    const submit = form.querySelector('button[type="submit"]')
+    const restore = disableWhile(submit, 'Salvando...')
+
+    try {
+      const formData = new FormData(form)
+      const payload = {
+        name: String(formData.get('name') || '').trim(),
+        plate: String(formData.get('plate') || '').trim().toUpperCase(),
+        model: String(formData.get('model') || '').trim(),
+        color: String(formData.get('color') || '').trim(),
+        vehicleType: String(formData.get('vehicleType') || '').trim()
+      }
+
+      if (!payload.name || !payload.plate || !payload.model || !payload.vehicleType) {
+        throw new Error('Preencha todos os campos obrigatorios do perfil.')
+      }
+
+      const result = await updateClientProfile(session.user.id, payload)
+      Object.assign(profile, result.profile)
+      showToast('Perfil atualizado com sucesso.')
+      state.activeView = 'profile'
+      await refresh({ silent: true })
+    } catch (error) {
+      showError(error)
+    } finally {
+      restore()
     }
   })
 }
@@ -407,7 +551,14 @@ async function openPixPaymentModal(plan, refresh) {
     <div class="loading-card">Gerando QR Code...</div>
   `)
 
-  const result = await createPixPayment({ planId: plan.id })
+  let result
+  try {
+    result = await createPixPayment({ planId: plan.id })
+  } catch (error) {
+    modal.remove()
+    throw error
+  }
+
   const content = modal.querySelector('.modal')
   content.innerHTML = `
     <div class="section-heading">
@@ -455,7 +606,7 @@ async function openPixPaymentModal(plan, refresh) {
       if (status.activated) {
         showToast('Pagamento aprovado. Plano ativo.')
         modal.remove()
-        refresh()
+        refresh({ silent: true })
       } else {
         showToast('Pagamento ainda nao aprovado pelo Mercado Pago.', 'warning')
       }
@@ -475,8 +626,10 @@ async function openCardSubscriptionModal({ plan, session, refresh, vehicle }) {
     return
   }
 
-  const quote = await quotePlanPayment({ planId: plan.id })
-  const modal = createModal(`
+  let modal
+  try {
+    const quote = await quotePlanPayment({ planId: plan.id })
+    modal = createModal(`
     <form id="mp-card-form" class="mp-card-form">
       <div class="section-heading">
         <div>
@@ -510,11 +663,9 @@ async function openCardSubscriptionModal({ plan, session, refresh, vehicle }) {
     </form>
   `)
 
-  bindModalClose(modal)
-
-  const MercadoPago = await loadMercadoPagoSdk()
-  const mp = new MercadoPago(MERCADO_PAGO_PUBLIC_KEY, { locale: 'pt-BR' })
-  const cardForm = mp.cardForm({
+    const MercadoPago = await loadMercadoPagoSdk()
+    const mp = new MercadoPago(MERCADO_PAGO_PUBLIC_KEY, { locale: 'pt-BR' })
+    const cardForm = mp.cardForm({
     amount: String(quote.amount),
     iframe: true,
     form: {
@@ -579,7 +730,7 @@ async function openCardSubscriptionModal({ plan, session, refresh, vehicle }) {
           if (result.activated) {
             showToast('Cartao recorrente aprovado. Plano ativo.')
             modal.remove()
-            refresh()
+            refresh({ silent: true })
           } else if (result.initPoint) {
             openPaymentLink(result.initPoint)
             showToast('Finalize a autorizacao no Mercado Pago.', 'warning')
@@ -601,7 +752,11 @@ async function openCardSubscriptionModal({ plan, session, refresh, vehicle }) {
         if (error) showError(error)
       }
     }
-  })
+    })
+  } catch (error) {
+    modal?.remove()
+    throw error
+  }
 }
 
 function createModal(content) {
@@ -614,12 +769,16 @@ function createModal(content) {
 }
 
 function bindModalClose(modal) {
-  modal.querySelectorAll('[data-modal-close]').forEach((button) => {
-    button.addEventListener('click', () => modal.remove())
-  })
+  if (modal.dataset.closeBound) return
+  modal.dataset.closeBound = '1'
 
   modal.addEventListener('click', (event) => {
-    if (event.target === modal) modal.remove()
+    const closeButton =
+      event.target instanceof Element ? event.target.closest('[data-modal-close]') : null
+    if (event.target === modal || closeButton) {
+      event.preventDefault()
+      modal.remove()
+    }
   })
 }
 

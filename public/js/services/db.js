@@ -75,6 +75,33 @@ export async function upsertVehicle(userId, { plate, model, color, vehicleType }
   return data
 }
 
+export async function updateClientProfile(userId, { name, plate, model, color, vehicleType }) {
+  const { data: profile, error: profileError } = await supabase
+    .from('users')
+    .update({ nome: name.trim() })
+    .eq('id', userId)
+    .select()
+    .single()
+
+  if (profileError) throw profileError
+
+  try {
+    const vehicle = await upsertVehicle(userId, {
+      plate,
+      model,
+      color,
+      vehicleType
+    })
+
+    return { profile, vehicle }
+  } catch (error) {
+    if (error?.code === '23505') {
+      throw new Error('Esta placa ja esta cadastrada em outra conta.')
+    }
+    throw error
+  }
+}
+
 export async function getVehicle(userId) {
   const { data, error } = await supabase
     .from('veiculos')
