@@ -1,4 +1,4 @@
-create extension if not exists pgcrypto;
+﻿create extension if not exists pgcrypto;
 
 alter table public.users add column if not exists tipo text;
 
@@ -90,7 +90,7 @@ create or replace view public.agenda_ocupada as
     data,
     horario,
     count(*)::integer as vagas_ocupadas,
-    2::integer as capacidade,
+    1::integer as capacidade,
     max(prioridade_plano)::integer as maior_prioridade
   from public.agendamentos
   where status = 'agendado'
@@ -109,6 +109,18 @@ as $$
   );
 $$;
 
+create or replace function public.is_valid_schedule_slot(p_horario time)
+returns boolean
+language sql
+immutable
+as $$
+  select extract(second from p_horario) = 0
+    and (
+      extract(hour from p_horario)::int * 60
+      + extract(minute from p_horario)::int
+    ) in (480, 560, 640, 780, 860, 940);
+$$;
+
 create or replace function public.validate_agendamento()
 returns trigger
 language plpgsql
@@ -117,9 +129,8 @@ as $$
 declare
   v_ocupados integer;
 begin
-  if extract(minute from new.horario)::int not in (0, 30)
-    or extract(second from new.horario)::int <> 0 then
-    raise exception 'Agendamentos devem usar intervalos de 30 minutos.';
+  if not public.is_valid_schedule_slot(new.horario) then
+    raise exception 'Escolha um horario valido da agenda.';
   end if;
 
   if new.status <> 'cancelado' then
@@ -130,7 +141,7 @@ begin
       and a.status = 'agendado'
       and a.id <> coalesce(new.id, '00000000-0000-0000-0000-000000000000'::uuid);
 
-    if v_ocupados >= 2 then
+    if v_ocupados >= 1 then
       raise exception 'Horario esgotado. Escolha outro horario disponivel.';
     end if;
   end if;
@@ -186,9 +197,8 @@ begin
     raise exception 'Sessao expirada. Faca login novamente.';
   end if;
 
-  if extract(minute from p_horario)::int not in (0, 30)
-    or extract(second from p_horario)::int <> 0 then
-    raise exception 'Os agendamentos precisam respeitar intervalos de 30 minutos.';
+  if not public.is_valid_schedule_slot(p_horario) then
+    raise exception 'Escolha um horario valido da agenda.';
   end if;
 
   perform pg_advisory_xact_lock(hashtextextended(p_data::text || ':' || p_horario::text, 0));
@@ -233,7 +243,7 @@ begin
     and horario = p_horario
     and status = 'agendado';
 
-  if v_ocupados >= 2 then
+  if v_ocupados >= 1 then
     select a.id, coalesce(a.prioridade_plano, 1)
       into v_lowest_id, v_lowest_priority
     from public.agendamentos a
@@ -256,13 +266,7 @@ begin
     v_displaced := true;
   end if;
 
-  select case
-    when not exists (
-      select 1 from public.agendamentos
-      where data = p_data and horario = p_horario and status = 'agendado' and slot_posicao = 1
-    ) then 1
-    else 2
-  end into v_slot_posicao;
+  v_slot_posicao := 1;
 
   insert into public.agendamentos (
     user_id,
@@ -369,82 +373,94 @@ insert into public.planos (
 values
   (
     'auto-bronze',
-    'Só para manter',
+    'So pra Manter',
     'carro',
     'bronze',
-    104.99,
-    '{"passeio":104.99,"suv":114.99,"picape":124.99}'::jsonb,
+    124.99,
+    '{"passeio":124.99,"suv":121.99,"picape":134.99}'::jsonb,
     10,
     1,
     array[
-      '2 lavagens tradicionais mensais nao acumulativas',
-      '2 enceramentos liquidos mensais nao acumulativos',
-      '10% de desconto nos demais servicos'
+      '2 lavagens tradicional mensal (nao acumula)',
+      '2 enceramentos liquidos mensal',
+      'Conservacao do veiculo',
+      '10% de desconto nos demais servicos',
+      'Economia superior a 120,00 reais'
     ],
     true
   ),
   (
     'auto-prata',
-    'Daquele modelo',
+    'Daquele Modelo',
     'carro',
     'prata',
-    144.99,
-    '{"passeio":144.99,"suv":154.99,"picape":164.99}'::jsonb,
+    153.99,
+    '{"passeio":153.99,"suv":164.99,"picape":175.99}'::jsonb,
     15,
     2,
     array[
-      '3 lavagens tradicionais mensais nao acumulativas',
-      '3 enceramentos liquidos mensais nao acumulativos',
+      '3 lavagens tradicional mensal (nao acumula)',
+      '3 enceramentos liquidos mensal',
       'Prioridade no agendamento',
-      '15% de desconto nos demais servicos'
+      'Conservacao do veiculo',
+      '15% de desconto nos demais servicos',
+      'Economia superior a 160,00 reais'
     ],
     true
   ),
   (
     'auto-ouro',
-    'Só boraaa!',
+    'So Boraaa',
     'carro',
     'ouro',
-    200.00,
-    '{"passeio":200.00,"suv":200.00,"picape":200.00}'::jsonb,
+    219.99,
+    '{"passeio":219.99,"suv":219.99,"picape":219.99}'::jsonb,
     15,
     3,
     array[
-      '7 lavagens mensais nao acumulativas',
-      'Prioridade maxima no agendamento',
+      '7 lavagens mensais',
+      '1 descontaminacao de pintura mensal',
+      '1 enceramento em pasta mensal',
+      'Conservacao do veiculo',
+      'Quer lavar e so marcar',
+      'Economia gigante',
       '15% de desconto nos demais servicos'
     ],
     true
   ),
   (
     'moto-bronze',
-    'Só para manter',
+    'So pra Manter',
     'moto',
     'bronze',
-    69.99,
-    '{"moto":69.99}'::jsonb,
+    79.99,
+    '{"moto":79.99}'::jsonb,
     10,
     1,
     array[
-      '2 lavagens tradicionais mensais nao acumulativas',
-      '2 enceramentos liquidos mensais nao acumulativos',
+      '2 lavagens tradicional mensal (nao acumula)',
+      '2 enceramentos liquidos mensal',
+      'Conservacao do veiculo',
+      'Economia superior a 70,00 reais',
       '10% de desconto nos demais servicos'
     ],
     true
   ),
   (
     'moto-prata',
-    'Só boraa',
+    'So Boraaa',
     'moto',
     'prata',
-    159.99,
-    '{"moto":159.99}'::jsonb,
+    169.99,
+    '{"moto":169.99}'::jsonb,
     15,
     2,
     array[
-      '3 lavagens tradicionais mensais',
+      '3 lavagens tradicional mensal (nao acumula)',
       '1 lavagem detalhada com aplicacao de verniz de motor',
       '1 enceramento em pasta',
+      'Prioridade no agendamento',
+      'Economia superior a 100,00 reais',
       '15% de desconto nos demais servicos'
     ],
     true

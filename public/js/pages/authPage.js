@@ -22,8 +22,8 @@ export function renderAuthPage({ app, configured }) {
           </p>
         </div>
         <div class="hero-metrics">
-          <span><strong>30 min</strong> Intervalos</span>
-          <span><strong>2</strong> Vagas por horario</span>
+          <span><strong>1h20</strong> Servicos</span>
+          <span><strong>1</strong> Vaga por horario</span>
           <span><strong>Offline</strong> Parcial</span>
         </div>
       </section>

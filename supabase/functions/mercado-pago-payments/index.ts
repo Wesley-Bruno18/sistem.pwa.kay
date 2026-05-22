@@ -53,13 +53,22 @@ function requiredEnv(name: string) {
   return value
 }
 
+function requiredAnyEnv(names: string[]) {
+  for (const name of names) {
+    const value = Deno.env.get(name)
+    if (value) return value
+  }
+
+  throw new Error(`Variavel de ambiente ausente: ${names.join(' ou ')}`)
+}
+
 function roundCurrency(value: number) {
   return Math.round((Number(value || 0) + Number.EPSILON) * 100) / 100
 }
 
 function getMercadoPagoFeeRate() {
-  const rate = Number(Deno.env.get('MERCADO_PAGO_FEE_RATE') || '0.05')
-  if (!Number.isFinite(rate) || rate < 0 || rate >= 1) return 0.05
+  const rate = Number(Deno.env.get('MERCADO_PAGO_FEE_RATE') || '0')
+  if (!Number.isFinite(rate) || rate < 0 || rate >= 1) return 0
   return rate
 }
 
@@ -119,7 +128,7 @@ async function mercadoPago(path: string, options: RequestInit = {}) {
 async function buildClients(req: Request) {
   const supabaseUrl = requiredEnv('SUPABASE_URL')
   const anonKey = requiredEnv('SUPABASE_ANON_KEY')
-  const adminKey = requiredEnv('SUPABASE_ADMIN_KEY')
+  const adminKey = requiredAnyEnv(['SUPABASE_ADMIN_KEY', 'SUPABASE_SERVICE_ROLE_KEY', 'ADMIN_KEY'])
   const authHeader = req.headers.get('Authorization') || ''
 
   const userClient = createClient(supabaseUrl, anonKey, {

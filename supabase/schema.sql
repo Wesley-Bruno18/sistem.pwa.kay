@@ -58,9 +58,15 @@ create unique index if not exists agendamentos_horario_unico_ativo
   where status <> 'cancelado';
 
 create or replace view public.agenda_ocupada as
-  select data, horario
+  select
+    data,
+    horario,
+    count(*)::integer as vagas_ocupadas,
+    1::integer as capacidade,
+    1::integer as maior_prioridade
   from public.agendamentos
-  where status <> 'cancelado';
+  where status <> 'cancelado'
+  group by data, horario;
 
 create table if not exists public.produtos (
   id uuid primary key default gen_random_uuid(),
@@ -126,6 +132,18 @@ begin
 end;
 $$;
 
+create or replace function public.is_valid_schedule_slot(p_horario time)
+returns boolean
+language sql
+immutable
+as $$
+  select extract(second from p_horario) = 0
+    and (
+      extract(hour from p_horario)::int * 60
+      + extract(minute from p_horario)::int
+    ) in (480, 560, 640, 780, 860, 940);
+$$;
+
 drop trigger if exists on_auth_user_created on auth.users;
 create trigger on_auth_user_created
   after insert on auth.users
@@ -137,9 +155,8 @@ language plpgsql
 set search_path = public
 as $$
 begin
-  if extract(minute from new.horario)::int not in (0, 30)
-    or extract(second from new.horario)::int <> 0 then
-    raise exception 'Agendamentos devem usar intervalos de 30 minutos.';
+  if not public.is_valid_schedule_slot(new.horario) then
+    raise exception 'Escolha um horario valido da agenda.';
   end if;
 
   if new.status <> 'cancelado' and exists (

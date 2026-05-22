@@ -58,9 +58,12 @@ async function routeAuthenticated(session) {
 
 function registerServiceWorker() {
   if ('serviceWorker' in navigator) {
-    navigator.serviceWorker.register('./service-worker.js').catch(() => {
-      showToast('Modo offline indisponivel neste navegador.', 'warning')
-    })
+    navigator.serviceWorker
+      .register('./service-worker.js')
+      .then((registration) => registration.update())
+      .catch(() => {
+        showToast('Modo offline indisponivel neste navegador.', 'warning')
+      })
   }
 }
 

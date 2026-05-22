@@ -23,6 +23,7 @@ import {
   addDays,
   formatCurrency,
   formatDisplayDate,
+  formatSlotRange,
   formatTime,
   getWeekDays,
   getWeekStart,
@@ -34,7 +35,6 @@ import {
 import { disableWhile, escapeHtml } from '../utils/dom.js'
 import {
   applySubscriberDiscount,
-  calculateMercadoPagoCharge,
   getPlanPrice,
   getPlanPriceLabel,
   getPriorityLabel,
@@ -170,7 +170,6 @@ function renderPlans(plans, subscription, vehicle) {
     .map((plan) => {
       const isCurrent = subscription?.plano_id === plan.id
       const price = getPlanPrice(plan, vehicle)
-      const payment = calculateMercadoPagoCharge(price)
       const discountSample = applySubscriberDiscount(100, plan)
       const services = (plan.servicos || [])
         .map((service) => `<li>${escapeHtml(service)}</li>`)
@@ -183,7 +182,7 @@ function renderPlans(plans, subscription, vehicle) {
             <h3>${escapeHtml(plan.nome)}</h3>
             <strong>${formatCurrency(price)}<small>/mes</small></strong>
             <small>${escapeHtml(getPlanPriceLabel(plan, vehicle))}</small>
-            <small>Mercado Pago: ${formatCurrency(payment.paymentTotal)} com taxa de 5%</small>
+            <small>Valor final no Mercado Pago</small>
             <small>${discountSample.discount}% de desconto nos demais servicos</small>
           </div>
           <ul>${services}</ul>
@@ -203,7 +202,7 @@ function renderSchedule(appointments, subscription, state) {
       `${item.data}-${formatTime(item.horario)}`,
       {
         occupied: Number(item.vagas_ocupadas || 0),
-        capacity: Number(item.capacidade || 2)
+        capacity: Number(item.capacidade || 1)
       }
     ])
   )
@@ -232,18 +231,19 @@ function renderSchedule(appointments, subscription, state) {
                             const slotKey = `${key}-${slot}`
                             const slotAvailability = availability.get(slotKey) || {
                               occupied: 0,
-                              capacity: 2
+                              capacity: 1
                             }
                             const isBooked = slotAvailability.occupied >= slotAvailability.capacity
                             const isSelected =
                               state.selectedSlot?.date === key && state.selectedSlot?.time === slot
                             const disabled = !subscription || isBooked || isPastDay
-                            const freeLabel = `${slotAvailability.capacity - slotAvailability.occupied}/${slotAvailability.capacity} vagas`
+                            const freeSlots = slotAvailability.capacity - slotAvailability.occupied
+                            const freeLabel = `${freeSlots}/${slotAvailability.capacity} ${slotAvailability.capacity === 1 ? 'vaga' : 'vagas'}`
 
                             return `
                               <button class="slot-option ${isSelected ? 'is-selected' : ''}" type="button"
                                 data-slot-date="${key}" data-slot-time="${slot}" ${disabled ? 'disabled' : ''}>
-                                ${slot}
+                                ${formatSlotRange(slot)}
                                 <span>${isBooked ? 'Esgotado' : disabled ? 'Indisp.' : freeLabel}</span>
                               </button>
                             `
@@ -284,7 +284,7 @@ function renderUserAppointments(appointments) {
           return `
             <article class="appointment-card">
               <div>
-                <strong>${formatDisplayDate(item.data, { day: '2-digit', month: 'short', year: 'numeric' })} - ${formatTime(item.horario)}</strong>
+                <strong>${formatDisplayDate(item.data, { day: '2-digit', month: 'short', year: 'numeric' })} - ${formatSlotRange(item.horario)}</strong>
                 <span>${escapeHtml(item.planos?.nome || 'Plano')}</span>
                 ${item.observacao ? `<small>${escapeHtml(item.observacao)}</small>` : ''}
               </div>
@@ -355,19 +355,20 @@ function bindClientActions({ refresh, state, session, plans, vehicle }) {
 
     if (target.matches('[data-confirm-schedule]')) {
       if (!state.selectedSlot) return
-      const ok = window.confirm(`Confirmar ${state.selectedSlot.date} as ${state.selectedSlot.time}?`)
+      const selectedSlot = { ...state.selectedSlot }
+      const ok = window.confirm(`Confirmar ${selectedSlot.date} das ${formatSlotRange(selectedSlot.time)}?`)
       if (!ok) return
 
       const restore = disableWhile(target, 'Confirmando...')
       try {
         const appointmentResult = await createAppointment({
           userId: session.user.id,
-          date: state.selectedSlot.date,
-          time: state.selectedSlot.time
+          date: selectedSlot.date,
+          time: selectedSlot.time
         })
         showToast(appointmentResult?.message || 'Agendamento confirmado.')
         window.setTimeout(() => {
-          showToast(`Lembrete simulado: horario em ${state.selectedSlot.date} as ${state.selectedSlot.time}.`, 'warning')
+          showToast(`Lembrete simulado: horario em ${selectedSlot.date} das ${formatSlotRange(selectedSlot.time)}.`, 'warning')
         }, 4500)
         state.selectedSlot = null
         refresh()
@@ -419,7 +420,7 @@ async function openPixPaymentModal(plan, refresh) {
     <div class="pix-box">
       <div class="payment-summary">
         <span>Plano: ${formatCurrency(result.baseAmount || result.amount || 0)}</span>
-        <span>Taxa Mercado Pago: ${formatCurrency(result.feeAmount || 0)}</span>
+        ${Number(result.feeAmount || 0) > 0 ? `<span>Taxa Mercado Pago: ${formatCurrency(result.feeAmount || 0)}</span>` : ''}
         <strong>Total: ${formatCurrency(result.amount || 0)}</strong>
       </div>
       ${
@@ -486,7 +487,7 @@ async function openCardSubscriptionModal({ plan, session, refresh, vehicle }) {
       </div>
       <div class="payment-summary">
         <span>Plano: ${formatCurrency(quote.baseAmount)}</span>
-        <span>Taxa Mercado Pago: ${formatCurrency(quote.feeAmount)}</span>
+        ${Number(quote.feeAmount || 0) > 0 ? `<span>Taxa Mercado Pago: ${formatCurrency(quote.feeAmount)}</span>` : ''}
         <strong>Total recorrente: ${formatCurrency(quote.amount)}</strong>
       </div>
       <div id="form-checkout__cardNumber" class="mp-field"></div>
@@ -630,7 +631,7 @@ function openPaymentLink(url) {
 
 function selectedSlotLabel(slot) {
   if (!slot) return 'Selecione um horario livre.'
-  return `${slot.date} as ${slot.time}`
+  return `${slot.date} das ${formatSlotRange(slot.time)}`
 }
 
 function nextAppointmentLabel(appointments) {
@@ -639,7 +640,7 @@ function nextAppointmentLabel(appointments) {
     .sort((a, b) => `${a.data}${a.horario}`.localeCompare(`${b.data}${b.horario}`))[0]
 
   if (!next) return 'Nenhum'
-  return `${formatDisplayDate(next.data, { day: '2-digit', month: 'short' })} ${formatTime(next.horario)}`
+  return `${formatDisplayDate(next.data, { day: '2-digit', month: 'short' })} ${formatSlotRange(next.horario)}`
 }
 
 function notifyPriorityLoss(appointments) {

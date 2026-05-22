@@ -1,6 +1,16 @@
 export const BUSINESS_START = 8 * 60
-export const BUSINESS_END = 18 * 60
-export const SATURDAY_END = 12 * 60
+export const BUSINESS_END = 17 * 60
+export const LUNCH_START = 12 * 60
+export const LUNCH_END = 13 * 60
+export const SLOT_DURATION = 80
+export const SCHEDULE_SLOT_STARTS = [
+  8 * 60,
+  9 * 60 + 20,
+  10 * 60 + 40,
+  13 * 60,
+  14 * 60 + 20,
+  15 * 60 + 40
+]
 
 export function parseDate(value) {
   if (typeof value === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(value)) {
@@ -83,23 +93,34 @@ export function formatTime(value) {
   return `${pad(hour)}:${pad(minute || '00')}`
 }
 
-export function isThirtyMinuteSlot(value) {
-  const [, minute] = formatTime(value).split(':').map(Number)
-  return minute === 0 || minute === 30
+export function minutesToTime(minutes) {
+  return `${pad(Math.floor(minutes / 60))}:${pad(minutes % 60)}`
+}
+
+export function timeToMinutes(value) {
+  const [hour, minute] = formatTime(value).split(':').map(Number)
+  return hour * 60 + minute
+}
+
+export function isValidScheduleSlot(value) {
+  return SCHEDULE_SLOT_STARTS.includes(timeToMinutes(value))
+}
+
+export function slotEndTime(value) {
+  return minutesToTime(timeToMinutes(value) + SLOT_DURATION)
+}
+
+export function formatSlotRange(value) {
+  const start = formatTime(value)
+  if (!start) return ''
+  return `${start} - ${slotEndTime(start)}`
 }
 
 export function slotsForDay(date) {
   const day = parseDate(date).getDay()
   if (day === 0) return []
 
-  const end = day === 6 ? SATURDAY_END : BUSINESS_END
-  const slots = []
-
-  for (let minutes = BUSINESS_START; minutes < end; minutes += 30) {
-    slots.push(`${pad(Math.floor(minutes / 60))}:${pad(minutes % 60)}`)
-  }
-
-  return slots
+  return SCHEDULE_SLOT_STARTS.map(minutesToTime)
 }
 
 export function statusLabel(status) {

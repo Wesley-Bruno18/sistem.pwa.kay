@@ -16,7 +16,7 @@ import {
   addDays,
   formatCurrency,
   formatDisplayDate,
-  formatTime,
+  formatSlotRange,
   getMonthGrid,
   getWeekDays,
   getWeekStart,
@@ -247,7 +247,7 @@ function renderAdminWeek(startDate, appointments) {
                       .map(
                         (item) => `
                           <div class="mini-appointment">
-                            <strong>${formatTime(item.horario)}</strong>
+                            <strong>${formatSlotRange(item.horario)}</strong>
                             <span>${escapeHtml(item.users?.nome || 'Cliente')}</span>
                           </div>
                         `
@@ -275,7 +275,7 @@ function renderAdminAppointmentList(appointments) {
           (item) => `
           <article class="admin-appointment-card">
             <div>
-              <strong>${formatTime(item.horario)} - ${escapeHtml(item.users?.nome || 'Cliente')}</strong>
+              <strong>${formatSlotRange(item.horario)} - ${escapeHtml(item.users?.nome || 'Cliente')}</strong>
               <span>${escapeHtml(item.veiculos?.placa || '')} | ${escapeHtml(item.veiculos?.modelo || '')} | ${escapeHtml(item.veiculos?.cor || '')}</span>
               <small>${escapeHtml(item.planos?.nome || 'Plano')}</small>
             </div>

@@ -22,11 +22,19 @@ export async function signIn({ email, password }) {
   return data
 }
 
+function getEmailRedirectTo() {
+  const url = new URL(window.location.href)
+  url.hash = ''
+  url.search = ''
+  return url.toString()
+}
+
 export async function signUpClient({ name, email, password, plate, model, color, vehicleType }) {
   const { data, error } = await supabase.auth.signUp({
     email,
     password,
     options: {
+      emailRedirectTo: getEmailRedirectTo(),
       data: {
         nome: name,
         tipo: 'cliente',

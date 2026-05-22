@@ -2,7 +2,7 @@ import { supabase } from './supabase.js'
 import {
   addDays,
   formatTime,
-  isThirtyMinuteSlot,
+  isValidScheduleSlot,
   toDateKey,
   todayKey
 } from '../utils/dates.js'
@@ -192,14 +192,14 @@ export async function isSlotBooked(date, time) {
     .maybeSingle()
 
   if (error) throw error
-  return Number(data?.vagas_ocupadas || 0) >= Number(data?.capacidade || 2)
+  return Number(data?.vagas_ocupadas || 0) >= Number(data?.capacidade || 1)
 }
 
 export async function createAppointment({ userId, date, time }) {
   const normalizedTime = formatTime(time)
 
-  if (!isThirtyMinuteSlot(normalizedTime)) {
-    throw new Error('Os agendamentos precisam respeitar intervalos de 30 minutos.')
+  if (!isValidScheduleSlot(normalizedTime)) {
+    throw new Error('Escolha um horario valido da agenda.')
   }
 
   if (`${date}T${normalizedTime}` < `${todayKey()}T00:00`) {

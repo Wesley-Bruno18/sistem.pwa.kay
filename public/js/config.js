@@ -4,5 +4,5 @@ window.SUPABASE_CONFIG = {
 };
 
 window.MERCADO_PAGO_CONFIG = {
-  publicKey: "APP_USR-d0a26210-XXXXXXXX-479f0400869e" // Substitua pela sua chave pública real
+  publicKey: "APP_USR-7e42ac26-30c7-4b74-a21b-023673dd2ba8"
 };

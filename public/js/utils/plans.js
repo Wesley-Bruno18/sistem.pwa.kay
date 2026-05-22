@@ -11,7 +11,7 @@ export const PLAN_LEVEL_LABELS = {
   ouro: 'Ouro'
 }
 
-export const MERCADO_PAGO_FEE_RATE = 0.05
+export const MERCADO_PAGO_FEE_RATE = 0
 
 export function roundCurrency(value) {
   return Math.round((Number(value || 0) + Number.EPSILON) * 100) / 100
