@@ -64,8 +64,10 @@ export function renderClientDashboard({ app, session, profile, onLogout }) {
   document.querySelector('#logoutButton').addEventListener('click', onLogout)
   bindClientActions({ refresh, state, session, profile })
 
-  async function refresh({ silent = false } = {}) {
+  async function refresh({ silent = false, preserveScroll = false } = {}) {
     const content = document.querySelector('#clientContent')
+    const scrollTop = preserveScroll ? window.scrollY : null
+
     if (!silent || !state.hasLoaded) {
       content.innerHTML = '<div class="loading-card">Atualizando dados...</div>'
     }
@@ -98,6 +100,10 @@ export function renderClientDashboard({ app, session, profile, onLogout }) {
       })
 
       notifyPriorityLoss(userAppointments)
+
+      if (scrollTop !== null) {
+        window.requestAnimationFrame(() => window.scrollTo({ top: scrollTop }))
+      }
     } catch (error) {
       showError(error)
       content.innerHTML = emptyState('Nao foi possivel carregar', 'Confira a conexao com o Supabase.')
@@ -349,7 +355,7 @@ function renderSchedule(appointments, subscription, state) {
           .join('')}
       </div>
       <div class="confirm-bar">
-        <span>${
+        <span data-selected-slot-label>${
           subscription
             ? selectedSlotLabel(state.selectedSlot)
             : 'Ative um plano para liberar a agenda.'
@@ -414,7 +420,7 @@ function bindClientActions({ refresh, state, session, profile }) {
       state.weekStart = addDays(state.weekStart, -7)
       state.selectedSlot = null
       state.activeView = 'schedule'
-      await refresh({ silent: true })
+      await refresh({ silent: true, preserveScroll: true })
       return
     }
 
@@ -422,7 +428,7 @@ function bindClientActions({ refresh, state, session, profile }) {
       state.weekStart = addDays(state.weekStart, 7)
       state.selectedSlot = null
       state.activeView = 'schedule'
-      await refresh({ silent: true })
+      await refresh({ silent: true, preserveScroll: true })
       return
     }
 
@@ -432,7 +438,7 @@ function bindClientActions({ refresh, state, session, profile }) {
         time: target.dataset.slotTime
       }
       state.activeView = 'schedule'
-      await refresh({ silent: true })
+      updateSelectedSlotUI(content, state)
       return
     }
 
@@ -475,7 +481,7 @@ function bindClientActions({ refresh, state, session, profile }) {
           showToast(`Lembrete simulado: horario em ${selectedSlot.date} das ${formatSlotRange(selectedSlot.time)}.`, 'warning')
         }, 4500)
         state.selectedSlot = null
-        await refresh({ silent: true })
+        await refresh({ silent: true, preserveScroll: true })
       } catch (error) {
         showError(error)
       } finally {
@@ -537,6 +543,25 @@ function bindClientActions({ refresh, state, session, profile }) {
       restore()
     }
   })
+}
+
+function updateSelectedSlotUI(content, state) {
+  content.querySelectorAll('[data-slot-date]').forEach((button) => {
+    const isSelected =
+      button.dataset.slotDate === state.selectedSlot?.date &&
+      button.dataset.slotTime === state.selectedSlot?.time
+    button.classList.toggle('is-selected', isSelected)
+  })
+
+  const label = content.querySelector('[data-selected-slot-label]')
+  if (label) {
+    label.textContent = selectedSlotLabel(state.selectedSlot)
+  }
+
+  const confirmButton = content.querySelector('[data-confirm-schedule]')
+  if (confirmButton) {
+    confirmButton.disabled = !state.selectedSlot
+  }
 }
 
 async function openPixPaymentModal(plan, refresh) {

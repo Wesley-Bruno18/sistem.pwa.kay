@@ -1,4 +1,4 @@
-const CACHE_NAME = 'auto-glow-pro-v12'
+const CACHE_NAME = 'auto-glow-pro-v13'
 
 const APP_SHELL = [
   './',
