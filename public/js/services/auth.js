@@ -14,7 +14,7 @@ export function onAuthChange(callback) {
 
 export async function signIn({ email, password }) {
   const { data, error } = await supabase.auth.signInWithPassword({
-    email,
+    email: email?.trim().toLowerCase(),
     password
   })
 
@@ -22,45 +22,76 @@ export async function signIn({ email, password }) {
   return data
 }
 
-function getEmailRedirectTo() {
-  const url = new URL(window.location.href)
+export function getEmailRedirectTo() {
+  const baseUrl = window.APP_CONFIG?.appUrl || window.location.href
+  const url = new URL(baseUrl, window.location.origin)
   url.hash = ''
   url.search = ''
   return url.toString()
 }
 
 export async function signUpClient({ name, email, password, plate, model, color, vehicleType }) {
+  const normalizedEmail = email?.trim().toLowerCase()
+
   const { data, error } = await supabase.auth.signUp({
-    email,
+    email: normalizedEmail,
     password,
     options: {
       emailRedirectTo: getEmailRedirectTo(),
       data: {
-        nome: name,
+        nome: name?.trim(),
         tipo: 'cliente',
-        placa: plate,
-        modelo: model,
-        cor: color,
+        placa: plate?.trim().toUpperCase(),
+        modelo: model?.trim(),
+        cor: color?.trim() || 'Nao informado',
         categoria: vehicleType
       }
     }
   })
 
-  if (error) throw error
+  if (error) {
+    if (/already|registered|exists/i.test(error.message || '')) {
+      throw new Error('Este email ja esta cadastrado. Entre na conta ou use a recuperacao de senha.')
+    }
+    throw error
+  }
+
+  if (data.user && Array.isArray(data.user.identities) && data.user.identities.length === 0) {
+    throw new Error('Este email ja esta cadastrado. Entre na conta ou use a recuperacao de senha.')
+  }
 
   if (data.session?.user) {
     await ensureUserProfile(data.session.user, {
-      name,
+      name: name?.trim(),
       tipo: 'cliente'
     })
     await upsertVehicle(data.session.user.id, {
-      plate,
-      model,
-      color,
+      plate: plate?.trim().toUpperCase(),
+      model: model?.trim(),
+      color: color?.trim() || 'Nao informado',
       vehicleType
     })
   }
 
+  return data
+}
+
+export async function requestPasswordReset(email) {
+  const normalizedEmail = email?.trim().toLowerCase()
+  if (!normalizedEmail) {
+    throw new Error('Informe seu email para receber o link de recuperacao.')
+  }
+
+  const { error } = await supabase.auth.resetPasswordForEmail(normalizedEmail, {
+    redirectTo: getEmailRedirectTo()
+  })
+
+  if (error) throw error
+}
+
+export async function updatePassword(password) {
+  const { data, error } = await supabase.auth.updateUser({ password })
+  if (error) throw error
   return data
 }
 

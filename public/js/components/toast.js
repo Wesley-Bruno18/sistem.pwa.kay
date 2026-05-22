@@ -3,7 +3,16 @@ const toastRoot = document.querySelector('#toast-root')
 export function showToast(message, type = 'success') {
   const toast = document.createElement('div')
   toast.className = `toast toast-${type}`
-  toast.textContent = message
+
+  const icon = document.createElement('span')
+  icon.className = 'toast-icon'
+  icon.setAttribute('aria-hidden', 'true')
+  icon.textContent = type === 'error' ? '!' : type === 'warning' ? 'i' : '✓'
+
+  const text = document.createElement('span')
+  text.textContent = message
+
+  toast.append(icon, text)
   toastRoot.appendChild(toast)
 
   window.setTimeout(() => {

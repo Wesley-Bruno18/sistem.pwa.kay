@@ -61,7 +61,7 @@ export async function upsertVehicle(userId, { plate, model, color, vehicleType }
     user_id: userId,
     placa: plate?.trim().toUpperCase(),
     modelo: model?.trim(),
-    cor: color?.trim(),
+    cor: color?.trim() || 'Nao informado',
     categoria: normalizeVehicleType(vehicleType)
   }
 

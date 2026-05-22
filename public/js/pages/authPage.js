@@ -1,4 +1,4 @@
-import { signIn, signUpClient } from '../services/auth.js'
+import { requestPasswordReset, signIn, signUpClient, updatePassword } from '../services/auth.js'
 import {
   clearSupabaseRuntimeConfig,
   saveSupabaseRuntimeConfig,
@@ -46,6 +46,7 @@ export function renderAuthPage({ app, configured }) {
             <input name="password" type="password" autocomplete="current-password" required />
           </label>
           <button class="primary-button" type="submit" ${configured ? '' : 'disabled'}>Entrar</button>
+          <button class="ghost-button full-button" type="button" id="forgotPassword" ${configured ? '' : 'disabled'}>Recuperar senha</button>
         </form>
 
         <form id="signupForm" class="auth-form is-hidden">
@@ -75,11 +76,12 @@ export function renderAuthPage({ app, configured }) {
           </div>
           <label>
             Cor
-            <input name="color" type="text" placeholder="Preto, prata..." required />
+            <input name="color" type="text" placeholder="Preto, prata... (opcional)" />
           </label>
           <label>
             Tipo do veiculo
             <select name="vehicleType" required>
+              <option value="" selected disabled>Selecione o tipo</option>
               <option value="passeio">Carro de passeio</option>
               <option value="suv">SUV</option>
               <option value="picape">Picape</option>
@@ -95,6 +97,73 @@ export function renderAuthPage({ app, configured }) {
   bindTabs()
   bindAuthForms()
   bindSetupForm()
+}
+
+export function renderPasswordResetPage({ app, onComplete }) {
+  app.innerHTML = `
+    <main class="auth-screen">
+      <section class="auth-hero">
+        ${brand()}
+        <div>
+          <p class="eyebrow">Seguranca</p>
+          <h1>Nova senha de acesso</h1>
+          <p class="hero-copy">
+            Defina uma nova senha para voltar ao painel com seguranca.
+          </p>
+        </div>
+        <div class="hero-metrics">
+          <span><strong>Email</strong> Validado</span>
+          <span><strong>Conta</strong> Protegida</span>
+          <span><strong>PWA</strong> Online</span>
+        </div>
+      </section>
+
+      <section class="auth-panel">
+        <form id="resetPasswordForm" class="auth-form">
+          <label>
+            Nova senha
+            <input name="password" type="password" autocomplete="new-password" minlength="6" required />
+          </label>
+          <label>
+            Confirmar senha
+            <input name="confirmPassword" type="password" autocomplete="new-password" minlength="6" required />
+          </label>
+          <button class="primary-button" type="submit">Salvar nova senha</button>
+          <button class="secondary-button" type="button" id="backToLogin">Voltar ao login</button>
+        </form>
+      </section>
+    </main>
+  `
+
+  document.querySelector('#resetPasswordForm')?.addEventListener('submit', async (event) => {
+    event.preventDefault()
+    const form = event.currentTarget
+    const formData = new FormData(form)
+    const password = String(formData.get('password') || '')
+    const confirmPassword = String(formData.get('confirmPassword') || '')
+
+    if (password !== confirmPassword) {
+      showToast('As senhas precisam ser iguais.', 'warning')
+      return
+    }
+
+    const restore = disableWhile(event.submitter, 'Salvando...')
+
+    try {
+      await updatePassword(password)
+      form.reset()
+      showToast('Senha atualizada com sucesso.')
+      await onComplete?.()
+    } catch (error) {
+      showError(error)
+    } finally {
+      restore()
+    }
+  })
+
+  document.querySelector('#backToLogin')?.addEventListener('click', async () => {
+    await onComplete?.({ silent: true })
+  })
 }
 
 function renderSetupPanel() {
@@ -124,14 +193,27 @@ function bindTabs() {
   document.querySelectorAll('[data-auth-tab]').forEach((button) => {
     button.addEventListener('click', () => {
       const selected = button.dataset.authTab
-      document.querySelectorAll('[data-auth-tab]').forEach((tab) => {
-        tab.classList.toggle('is-active', tab.dataset.authTab === selected)
-      })
+      const current = document.querySelector('[data-auth-tab].is-active')?.dataset.authTab
+      if (current === selected) return
 
-      document.querySelector('#loginForm').classList.toggle('is-hidden', selected !== 'login')
-      document.querySelector('#signupForm').classList.toggle('is-hidden', selected !== 'signup')
+      resetAuthForms()
+      switchAuthTab(selected)
     })
   })
+}
+
+function switchAuthTab(selected) {
+  document.querySelectorAll('[data-auth-tab]').forEach((tab) => {
+    tab.classList.toggle('is-active', tab.dataset.authTab === selected)
+  })
+
+  document.querySelector('#loginForm')?.classList.toggle('is-hidden', selected !== 'login')
+  document.querySelector('#signupForm')?.classList.toggle('is-hidden', selected !== 'signup')
+}
+
+function resetAuthForms() {
+  document.querySelector('#loginForm')?.reset()
+  document.querySelector('#signupForm')?.reset()
 }
 
 function bindSetupForm() {
@@ -175,27 +257,72 @@ function bindAuthForms() {
     }
   })
 
+  document.querySelector('#forgotPassword')?.addEventListener('click', async () => {
+    const emailInput = document.querySelector('#loginForm input[name="email"]')
+    const email = emailInput?.value?.trim()
+
+    if (!email) {
+      emailInput?.focus()
+      showToast('Digite seu email para receber o link de recuperacao.', 'warning')
+      return
+    }
+
+    const restore = disableWhile(document.querySelector('#forgotPassword'), 'Enviando...')
+
+    try {
+      await requestPasswordReset(email)
+      document.querySelector('#loginForm')?.reset()
+      showToast('Link de recuperacao enviado para seu email.')
+    } catch (error) {
+      showError(error)
+    } finally {
+      restore()
+    }
+  })
+
   document.querySelector('#signupForm')?.addEventListener('submit', async (event) => {
     event.preventDefault()
+    const form = event.currentTarget
+    if (!form.checkValidity()) {
+      form.reportValidity()
+      return
+    }
+
     const button = event.submitter
     const restore = disableWhile(button, 'Criando...')
 
     try {
-      const formData = new FormData(event.currentTarget)
+      const formData = new FormData(form)
+      const payload = {
+        name: String(formData.get('name') || '').trim(),
+        email: String(formData.get('email') || '').trim().toLowerCase(),
+        password: String(formData.get('password') || ''),
+        plate: String(formData.get('plate') || '').trim().toUpperCase(),
+        model: String(formData.get('model') || '').trim(),
+        color: String(formData.get('color') || '').trim(),
+        vehicleType: String(formData.get('vehicleType') || '').trim()
+      }
+
+      if (!payload.name || !payload.email || !payload.password || !payload.plate || !payload.model || !payload.vehicleType) {
+        throw new Error('Preencha todos os campos obrigatorios do cadastro.')
+      }
+
       const result = await signUpClient({
-        name: formData.get('name'),
-        email: formData.get('email'),
-        password: formData.get('password'),
-        plate: formData.get('plate'),
-        model: formData.get('model'),
-        color: formData.get('color'),
-        vehicleType: formData.get('vehicleType')
+        name: payload.name,
+        email: payload.email,
+        password: payload.password,
+        plate: payload.plate,
+        model: payload.model,
+        color: payload.color,
+        vehicleType: payload.vehicleType
       })
 
+      form.reset()
+
       if (result.session) {
-        showToast('Conta criada com sucesso.')
+        showToast('Cadastro concluido com sucesso.')
       } else {
-        showToast('Cadastro criado. Confirme o email antes do primeiro acesso.', 'warning')
+        showToast('Cadastro concluido com sucesso. Confirme o email antes do primeiro acesso.')
       }
     } catch (error) {
       showError(error)
