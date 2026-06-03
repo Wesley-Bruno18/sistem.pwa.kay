@@ -5,6 +5,14 @@ export const VEHICLE_LABELS = {
   moto: 'Moto'
 }
 
+export const PLAN_PRICE_LABELS = {
+  passeio: 'Passeio',
+  suv: 'SUV',
+  picape: 'Picape',
+  moto: 'Moto',
+  carro: 'Qualquer carro'
+}
+
 export const PLAN_LEVEL_LABELS = {
   bronze: 'Bronze',
   prata: 'Prata',
@@ -65,6 +73,42 @@ export function getPlanPriceLabel(plan, vehicleOrType) {
     style: 'currency',
     currency: 'BRL'
   }).format(getPlanPrice(plan, vehicleType))}`
+}
+
+export function getPlanPriceRows(plan) {
+  if (!plan) return []
+
+  if ((plan.categoria || 'carro') === 'moto') {
+    return [
+      {
+        type: 'moto',
+        label: PLAN_PRICE_LABELS.moto,
+        price: getPlanPrice(plan, 'moto')
+      }
+    ]
+  }
+
+  const carTypes = ['passeio', 'suv', 'picape']
+  const rows = carTypes.map((type) => ({
+    type,
+    label: PLAN_PRICE_LABELS[type],
+    price: getPlanPrice(plan, type)
+  }))
+  const firstPrice = rows[0]?.price
+  const samePriceForEveryCar =
+    firstPrice > 0 && rows.every((row) => Number(row.price) === Number(firstPrice))
+
+  if (samePriceForEveryCar) {
+    return [
+      {
+        type: 'carro',
+        label: PLAN_PRICE_LABELS.carro,
+        price: firstPrice
+      }
+    ]
+  }
+
+  return rows
 }
 
 export function getPlanDiscount(subscriptionOrPlan) {

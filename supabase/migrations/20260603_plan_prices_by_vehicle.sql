@@ -1,4 +1,4 @@
-﻿insert into public.planos (
+insert into public.planos (
   slug, nome, categoria, nivel, preco, precos, desconto_percentual, prioridade, servicos, ativo
 )
 values

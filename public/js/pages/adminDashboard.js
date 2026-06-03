@@ -26,7 +26,7 @@ import {
   todayKey
 } from '../utils/dates.js'
 import { disableWhile, escapeHtml, parseServiceList } from '../utils/dom.js'
-import { getPlanPrice, PLAN_LEVEL_LABELS, VEHICLE_LABELS } from '../utils/plans.js'
+import { getPlanPriceRows, PLAN_LEVEL_LABELS } from '../utils/plans.js'
 
 export function renderAdminDashboard({ app, profile, onLogout }) {
   const initialView = ['agenda', 'estoque', 'planos', 'relatorios'].includes(location.hash.slice(1))
@@ -569,7 +569,7 @@ function renderPlanMetrics(plans) {
           (plan) => `
             <article class="data-row">
               <div>
-                <strong>${escapeHtml(plan.nome)} - ${formatCurrency(plan.preco)}</strong>
+                <strong>${escapeHtml(plan.nome)}</strong>
                 <span>${PLAN_LEVEL_LABELS[plan.nivel] || 'Plano'} | ${plan.categoria === 'moto' ? 'Motos' : 'Carros'} | prioridade ${plan.prioridade || 1} | ${plan.desconto_percentual || 0}% off</span>
                 <span>${priceSummary(plan)}</span>
                 <span>${plan.clientesAtivos} ativos | ${plan.clientesInativos} inativos</span>
@@ -608,12 +608,8 @@ function firstPriceFromForm(formData) {
 }
 
 function priceSummary(plan) {
-  if (plan.categoria === 'moto') {
-    return `${VEHICLE_LABELS.moto}: ${formatCurrency(getPlanPrice(plan, 'moto'))}`
-  }
-
-  return ['passeio', 'suv', 'picape']
-    .map((type) => `${VEHICLE_LABELS[type]} ${formatCurrency(getPlanPrice(plan, type))}`)
+  return getPlanPriceRows(plan)
+    .map((row) => `${row.label}: ${formatCurrency(row.price)}`)
     .join(' | ')
 }
 

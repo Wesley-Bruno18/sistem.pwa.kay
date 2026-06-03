@@ -376,8 +376,8 @@ values
     'So pra Manter',
     'carro',
     'bronze',
-    124.99,
-    '{"passeio":124.99,"suv":121.99,"picape":134.99}'::jsonb,
+    109.99,
+    '{"passeio":109.99,"suv":121.99,"picape":134.99}'::jsonb,
     10,
     1,
     array[
@@ -413,8 +413,8 @@ values
     'So Boraaa',
     'carro',
     'ouro',
-    219.99,
-    '{"passeio":219.99,"suv":219.99,"picape":219.99}'::jsonb,
+    200.00,
+    '{"passeio":200.00,"suv":200.00,"picape":200.00}'::jsonb,
     15,
     3,
     array[

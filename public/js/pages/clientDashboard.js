@@ -37,8 +37,9 @@ import { disableWhile, escapeHtml } from '../utils/dom.js'
 import {
   applySubscriberDiscount,
   getPlanPrice,
-  getPlanPriceLabel,
+  getPlanPriceRows,
   getPriorityLabel,
+  PLAN_PRICE_LABELS,
   planMatchesVehicle,
   VEHICLE_LABELS
 } from '../utils/plans.js'
@@ -249,7 +250,7 @@ function renderProfile(profile, vehicle) {
           </label>
         </div>
         <div class="button-row">
-          <button class="primary-button" type="submit">Salvar alteracoes</button>
+          <button class="primary-button" type="submit">Salvar alterações</button>
         </div>
       </form>
     </section>
@@ -266,7 +267,9 @@ function renderPlans(plans, subscription, vehicle) {
   return visiblePlans
     .map((plan) => {
       const isCurrent = subscription?.plano_id === plan.id
-      const price = getPlanPrice(plan, vehicle)
+      const vehicleType = vehicle?.categoria
+      const selectedPrice = vehicleType ? getPlanPrice(plan, vehicle) : null
+      const selectedLabel = PLAN_PRICE_LABELS[vehicleType] || VEHICLE_LABELS[vehicleType] || 'Veiculo'
       const discountSample = applySubscriberDiscount(100, plan)
       const services = (plan.servicos || [])
         .map((service) => `<li>${escapeHtml(service)}</li>`)
@@ -277,9 +280,9 @@ function renderPlans(plans, subscription, vehicle) {
           <div>
             <span class="plan-status">${isCurrent ? 'Plano atual' : `${escapeHtml(plan.nivel || 'plano')} - ${getPriorityLabel(plan)}`}</span>
             <h3>${escapeHtml(plan.nome)}</h3>
-            <strong>${formatCurrency(price)}<small>/mes</small></strong>
-            <small>${escapeHtml(getPlanPriceLabel(plan, vehicle))}</small>
-            <small>Valor final no Mercado Pago</small>
+            <strong>${selectedPrice ? formatCurrency(selectedPrice) : 'Por veiculo'}<small>/mes</small></strong>
+            <small>${selectedPrice ? `Seu veiculo: ${escapeHtml(selectedLabel)}` : 'Valor depende do tipo de veiculo'}</small>
+            ${renderPlanPriceRows(plan)}
             <small>${discountSample.discount}% de desconto nos demais servicos</small>
           </div>
           <ul>${services}</ul>
@@ -291,6 +294,23 @@ function renderPlans(plans, subscription, vehicle) {
       `
     })
     .join('')
+}
+
+function renderPlanPriceRows(plan) {
+  return `
+    <div class="plan-price-list">
+      ${getPlanPriceRows(plan)
+        .map(
+          (row) => `
+            <div class="plan-price-row">
+              <span>${escapeHtml(row.label)}</span>
+              <strong>${formatCurrency(row.price)}</strong>
+            </div>
+          `
+        )
+        .join('')}
+    </div>
+  `
 }
 
 function renderSchedule(appointments, subscription, state) {

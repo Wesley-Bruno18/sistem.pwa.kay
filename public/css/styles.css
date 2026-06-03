@@ -539,6 +539,34 @@ a {
   font-size: 0.85rem;
 }
 
+.plan-price-list {
+  display: grid;
+  gap: 8px;
+  margin: 14px 0 4px;
+}
+
+.plan-price-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: rgba(255, 255, 255, 0.035);
+  padding: 9px 10px;
+}
+
+.plan-price-row span {
+  color: var(--muted);
+  font-size: 0.84rem;
+  font-weight: 800;
+}
+
+.plan-price-row strong {
+  font-size: 1rem;
+  white-space: nowrap;
+}
+
 .plan-card ul {
   display: grid;
   gap: 10px;
