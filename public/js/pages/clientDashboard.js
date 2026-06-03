@@ -195,9 +195,7 @@ function renderActiveClientView(data) {
           <h2>Escolha sua assinatura</h2>
         </div>
       </div>
-      <div class="plan-carousel">
-        ${renderPlans(data.plans, data.subscription, data.vehicle)}
-      </div>
+      ${renderPlans(data.plans, data.subscription, data.vehicle)}
     </section>
   `
 }
@@ -258,42 +256,73 @@ function renderProfile(profile, vehicle) {
 }
 
 function renderPlans(plans, subscription, vehicle) {
-  const visiblePlans = plans.filter((plan) => planMatchesVehicle(plan, vehicle))
-
-  if (!visiblePlans.length) {
+  if (!plans.length) {
     return emptyState('Nenhum plano publicado', 'O administrador ainda nao liberou planos ativos.')
   }
 
-  return visiblePlans
-    .map((plan) => {
-      const isCurrent = subscription?.plano_id === plan.id
-      const vehicleType = vehicle?.categoria
-      const selectedPrice = vehicleType ? getPlanPrice(plan, vehicle) : null
-      const selectedLabel = PLAN_PRICE_LABELS[vehicleType] || VEHICLE_LABELS[vehicleType] || 'Veiculo'
-      const discountSample = applySubscriberDiscount(100, plan)
-      const services = (plan.servicos || [])
-        .map((service) => `<li>${escapeHtml(service)}</li>`)
-        .join('')
+  return ['carro', 'moto']
+    .map((category) => {
+      const categoryPlans = plans.filter((plan) => (plan.categoria || 'carro') === category)
+      if (!categoryPlans.length) return ''
 
       return `
-        <article class="plan-card ${isCurrent ? 'is-current' : ''}">
-          <div>
-            <span class="plan-status">${isCurrent ? 'Plano atual' : `${escapeHtml(plan.nivel || 'plano')} - ${getPriorityLabel(plan)}`}</span>
-            <h3>${escapeHtml(plan.nome)}</h3>
-            <strong>${selectedPrice ? formatCurrency(selectedPrice) : 'Por veiculo'}<small>/mes</small></strong>
-            <small>${selectedPrice ? `Seu veiculo: ${escapeHtml(selectedLabel)}` : 'Valor depende do tipo de veiculo'}</small>
-            ${renderPlanPriceRows(plan)}
-            <small>${discountSample.discount}% de desconto nos demais servicos</small>
+        <div class="plan-group">
+          <div class="plan-group-heading">
+            <strong>${category === 'moto' ? 'Motos' : 'Carros'}</strong>
+            <small>${category === 'moto' ? 'Planos exclusivos para motos' : 'Planos para passeio, SUV e picape'}</small>
           </div>
-          <ul>${services}</ul>
-          <div class="button-row stacked-mobile">
-            <button class="secondary-button" type="button" data-payment-plan="${plan.id}" data-method="pix" ${isCurrent ? 'disabled' : ''}>PIX</button>
-            <button class="primary-button" type="button" data-payment-plan="${plan.id}" data-method="cartao" ${isCurrent ? 'disabled' : ''}>Cartao recorrente</button>
+          <div class="plan-carousel">
+            ${categoryPlans.map((plan) => renderPlanCard(plan, subscription, vehicle)).join('')}
           </div>
-        </article>
+        </div>
       `
     })
     .join('')
+}
+
+function renderPlanCard(plan, subscription, vehicle) {
+  const isCurrent = subscription?.plano_id === plan.id
+  const hasVehicle = Boolean(vehicle?.categoria)
+  const isCompatible = hasVehicle && planMatchesVehicle(plan, vehicle)
+  const canSubscribe = !isCurrent && isCompatible
+  const vehicleType = isCompatible ? vehicle?.categoria : null
+  const selectedPrice = vehicleType ? getPlanPrice(plan, vehicle) : null
+  const selectedLabel = PLAN_PRICE_LABELS[vehicleType] || VEHICLE_LABELS[vehicleType] || 'Veiculo'
+  const discountSample = applySubscriberDiscount(100, plan)
+  const services = (plan.servicos || [])
+    .map((service) => `<li>${escapeHtml(service)}</li>`)
+    .join('')
+
+  return `
+    <article class="plan-card ${isCurrent ? 'is-current' : ''} ${hasVehicle && !isCompatible ? 'is-unavailable' : ''}">
+      <div>
+        <span class="plan-status">${isCurrent ? 'Plano atual' : `${escapeHtml(plan.nivel || 'plano')} - ${getPriorityLabel(plan)}`}</span>
+        <h3>${escapeHtml(plan.nome)}</h3>
+        <strong>${selectedPrice ? formatCurrency(selectedPrice) : 'Por veiculo'}<small>/mes</small></strong>
+        <small>${selectedPrice ? `Seu veiculo: ${escapeHtml(selectedLabel)}` : 'Valor depende do tipo de veiculo'}</small>
+        ${renderPlanPriceRows(plan)}
+        <small>${discountSample.discount}% de desconto nos demais servicos</small>
+        ${renderPlanAvailability({ hasVehicle, isCompatible, isCurrent, plan })}
+      </div>
+      <ul>${services}</ul>
+      <div class="button-row stacked-mobile">
+        <button class="secondary-button" type="button" data-payment-plan="${plan.id}" data-method="pix" ${canSubscribe ? '' : 'disabled'}>PIX</button>
+        <button class="primary-button" type="button" data-payment-plan="${plan.id}" data-method="cartao" ${canSubscribe ? '' : 'disabled'}>Cartao recorrente</button>
+      </div>
+    </article>
+  `
+}
+
+function renderPlanAvailability({ hasVehicle, isCompatible, isCurrent, plan }) {
+  if (isCurrent) return ''
+  if (!hasVehicle) {
+    return '<small class="plan-availability">Cadastre seu veiculo no Perfil para assinar.</small>'
+  }
+  if (!isCompatible) {
+    return `<small class="plan-availability">${plan.categoria === 'moto' ? 'Disponivel para motos.' : 'Disponivel para carros.'}</small>`
+  }
+
+  return ''
 }
 
 function renderPlanPriceRows(plan) {

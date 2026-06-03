@@ -504,6 +504,34 @@ a {
   scrollbar-color: var(--green) transparent;
 }
 
+.plan-group {
+  display: grid;
+  gap: 12px;
+}
+
+.plan-group + .plan-group {
+  margin-top: 24px;
+}
+
+.plan-group-heading {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.plan-group-heading strong {
+  color: var(--text);
+  font-size: 1rem;
+}
+
+.plan-group-heading small,
+.plan-availability {
+  color: var(--muted);
+  font-size: 0.84rem;
+}
+
 .plan-card {
   display: grid;
   align-content: space-between;
@@ -515,6 +543,10 @@ a {
 .plan-card.is-current {
   border-color: rgba(0, 255, 136, 0.58);
   box-shadow: 0 0 0 1px rgba(0, 255, 136, 0.18);
+}
+
+.plan-card.is-unavailable {
+  opacity: 0.72;
 }
 
 .plan-status {
@@ -565,6 +597,12 @@ a {
 .plan-price-row strong {
   font-size: 1rem;
   white-space: nowrap;
+}
+
+.plan-availability {
+  display: block;
+  margin-top: 8px;
+  color: var(--yellow);
 }
 
 .plan-card ul {
