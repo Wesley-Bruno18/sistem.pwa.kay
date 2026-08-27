@@ -456,6 +456,10 @@ function bindClientActions({ refresh, state, session, profile }) {
   content.addEventListener('click', async (event) => {
     const target = event.target instanceof Element ? event.target.closest('button') : null
     if (!target) return
+
+    // Submit buttons precisam disparar o evento submit do formulario.
+    if (target.type === 'submit' && target.form) return
+
     event.preventDefault()
     event.stopPropagation()
 
