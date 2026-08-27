@@ -554,11 +554,12 @@ function bindClientActions({ refresh, state, session, profile }) {
   })
 
   content.addEventListener('submit', async (event) => {
-    if (!event.target.matches('#clientProfileForm')) return
+    const form = event.target instanceof HTMLFormElement ? event.target : null
+    if (!form?.matches('#clientProfileForm')) return
+
     event.preventDefault()
     event.stopPropagation()
 
-    const form = event.target
     if (!form.checkValidity()) {
       form.reportValidity()
       return
@@ -585,7 +586,7 @@ function bindClientActions({ refresh, state, session, profile }) {
       Object.assign(profile, result.profile)
       showToast('Perfil atualizado com sucesso.')
       state.activeView = 'profile'
-      await refresh({ silent: true })
+      await refresh({ silent: true, preserveScroll: true })
     } catch (error) {
       showError(error)
     } finally {

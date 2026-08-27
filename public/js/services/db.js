@@ -20,6 +20,23 @@ function friendlyDuplicateMessage(error) {
   return error
 }
 
+function isMissingRpcError(error) {
+  return (
+    ['42883', 'PGRST202'].includes(error?.code) ||
+    /function.*not found|could not find.*function/i.test(error?.message || '')
+  )
+}
+
+function friendlyProfileError(error) {
+  const message = error?.message || ''
+
+  if (error?.code === '23505' || /placa.*cadastrada|duplicate key|unique/i.test(message)) {
+    return new Error('Esta placa ja esta cadastrada em outra conta.')
+  }
+
+  return error
+}
+
 export async function ensureUserProfile(authUser, defaults = {}) {
   const meta = authUser.user_metadata || {}
   const profile = {
@@ -76,29 +93,67 @@ export async function upsertVehicle(userId, { plate, model, color, vehicleType }
 }
 
 export async function updateClientProfile(userId, { name, plate, model, color, vehicleType }) {
+  const normalizedProfile = {
+    name: name.trim(),
+    plate: plate.trim().toUpperCase(),
+    model: model.trim(),
+    color: color?.trim() || '',
+    vehicleType: normalizeVehicleType(vehicleType)
+  }
+
+  const { data: profileData, error: profileRpcError } = await supabase
+    .rpc('atualizar_perfil_cliente', {
+      p_nome: normalizedProfile.name,
+      p_placa: normalizedProfile.plate,
+      p_modelo: normalizedProfile.model,
+      p_cor: normalizedProfile.color,
+      p_categoria: normalizedProfile.vehicleType
+    })
+    .maybeSingle()
+
+  if (!profileRpcError && profileData) {
+    return {
+      profile: {
+        id: profileData.user_id,
+        nome: profileData.nome,
+        email: profileData.email,
+        tipo: profileData.tipo
+      },
+      vehicle: {
+        id: profileData.veiculo_id,
+        user_id: profileData.user_id,
+        placa: profileData.placa,
+        modelo: profileData.modelo,
+        cor: profileData.cor,
+        categoria: profileData.categoria
+      }
+    }
+  }
+
+  if (profileRpcError && !isMissingRpcError(profileRpcError)) {
+    throw friendlyProfileError(profileRpcError)
+  }
+
   const { data: profile, error: profileError } = await supabase
     .from('users')
-    .update({ nome: name.trim() })
+    .update({ nome: normalizedProfile.name })
     .eq('id', userId)
     .select()
     .single()
 
-  if (profileError) throw profileError
+  if (profileError) throw friendlyProfileError(profileError)
 
   try {
     const vehicle = await upsertVehicle(userId, {
-      plate,
-      model,
-      color,
-      vehicleType
+      plate: normalizedProfile.plate,
+      model: normalizedProfile.model,
+      color: normalizedProfile.color,
+      vehicleType: normalizedProfile.vehicleType
     })
 
     return { profile, vehicle }
   } catch (error) {
-    if (error?.code === '23505') {
-      throw new Error('Esta placa ja esta cadastrada em outra conta.')
-    }
-    throw error
+    throw friendlyProfileError(error)
   }
 }
 
