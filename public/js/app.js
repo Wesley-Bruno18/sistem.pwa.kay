@@ -1,7 +1,7 @@
 import { renderAuthPage, renderPasswordResetPage } from './pages/authPage.js'
 import { renderClientDashboard } from './pages/clientDashboard.js'
 import { renderAdminDashboard } from './pages/adminDashboard.js'
-import { getSession, onAuthChange, signOut } from './services/auth.js'
+import { getSession, onAuthChange, signOut, SIGNUP_LOGIN_REDIRECT_KEY } from './services/auth.js'
 import { getOrCreateProfile } from './services/db.js'
 import { isSupabaseConfigured } from './services/supabase.js'
 import { showError, showToast } from './components/toast.js'
@@ -142,6 +142,12 @@ async function boot() {
     }
 
     if (passwordRecoveryOpen || isPasswordRecoveryUrl()) return
+    if (_event === 'SIGNED_IN' && sessionStorage.getItem(SIGNUP_LOGIN_REDIRECT_KEY) === '1') return
+    if (_event === 'SIGNED_OUT') {
+      renderAuth()
+      return
+    }
+
     if (session) routeAuthenticated(session)
   })
 

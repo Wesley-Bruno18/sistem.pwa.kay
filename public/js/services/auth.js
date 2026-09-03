@@ -1,6 +1,8 @@
 import { supabase } from './supabase.js'
 import { ensureUserProfile, upsertVehicle } from './db.js'
 
+export const SIGNUP_LOGIN_REDIRECT_KEY = 'auto-glow:signup-login-redirect'
+
 export async function getSession() {
   const { data, error } = await supabase.auth.getSession()
   if (error) throw error
@@ -61,19 +63,26 @@ export async function signUpClient({ name, email, password, plate, model, color,
   }
 
   if (data.session?.user) {
-    await ensureUserProfile(data.session.user, {
-      name: name?.trim(),
-      tipo: 'cliente'
-    })
-    await upsertVehicle(data.session.user.id, {
-      plate: plate?.trim().toUpperCase(),
-      model: model?.trim(),
-      color: color?.trim() || 'Nao informado',
-      vehicleType
-    })
+    try {
+      await ensureUserProfile(data.session.user, {
+        name: name?.trim(),
+        tipo: 'cliente'
+      })
+      await upsertVehicle(data.session.user.id, {
+        plate: plate?.trim().toUpperCase(),
+        model: model?.trim(),
+        color: color?.trim() || 'Nao informado',
+        vehicleType
+      })
+    } finally {
+      await supabase.auth.signOut().catch(() => undefined)
+    }
   }
 
-  return data
+  return {
+    ...data,
+    session: null
+  }
 }
 
 export async function requestPasswordReset(email) {

@@ -1,4 +1,10 @@
-import { requestPasswordReset, signIn, signUpClient, updatePassword } from '../services/auth.js'
+import {
+  requestPasswordReset,
+  signIn,
+  SIGNUP_LOGIN_REDIRECT_KEY,
+  signUpClient,
+  updatePassword
+} from '../services/auth.js'
 import {
   clearSupabaseRuntimeConfig,
   saveSupabaseRuntimeConfig,
@@ -307,7 +313,9 @@ function bindAuthForms() {
         throw new Error('Preencha todos os campos obrigatorios do cadastro.')
       }
 
-      const result = await signUpClient({
+      sessionStorage.setItem(SIGNUP_LOGIN_REDIRECT_KEY, '1')
+
+      await signUpClient({
         name: payload.name,
         email: payload.email,
         password: payload.password,
@@ -318,15 +326,19 @@ function bindAuthForms() {
       })
 
       form.reset()
+      switchAuthTab('login')
 
-      if (result.session) {
-        showToast('Cadastro concluido com sucesso.')
-      } else {
-        showToast('Cadastro concluido com sucesso. Confirme o email antes do primeiro acesso.')
+      const loginEmail = document.querySelector('#loginForm input[name="email"]')
+      if (loginEmail) {
+        loginEmail.value = payload.email
+        loginEmail.focus()
       }
+
+      showToast('Cadastro concluido com sucesso. Entre com sua senha para acessar.')
     } catch (error) {
       showError(error)
     } finally {
+      sessionStorage.removeItem(SIGNUP_LOGIN_REDIRECT_KEY)
       restore()
     }
   })
