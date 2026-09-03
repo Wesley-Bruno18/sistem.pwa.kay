@@ -112,16 +112,18 @@ export async function updateClientProfile(userId, { name, plate, model, color, v
     .maybeSingle()
 
   if (!profileRpcError && profileData) {
+    const profileId = profileData.cliente_id || profileData.user_id
+
     return {
       profile: {
-        id: profileData.user_id,
+        id: profileId,
         nome: profileData.nome,
         email: profileData.email,
         tipo: profileData.tipo
       },
       vehicle: {
         id: profileData.veiculo_id,
-        user_id: profileData.user_id,
+        user_id: profileId,
         placa: profileData.placa,
         modelo: profileData.modelo,
         cor: profileData.cor,

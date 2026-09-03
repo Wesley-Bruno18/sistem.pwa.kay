@@ -122,12 +122,17 @@ begin
     insert into public.veiculos (user_id, placa, modelo, cor, categoria)
     values (
       new.id,
-      upper(new.raw_user_meta_data ->> 'placa'),
-      coalesce(new.raw_user_meta_data ->> 'modelo', 'Nao informado'),
-      coalesce(new.raw_user_meta_data ->> 'cor', 'Nao informado'),
+      upper(trim(new.raw_user_meta_data ->> 'placa')),
+      coalesce(nullif(trim(coalesce(new.raw_user_meta_data ->> 'modelo', '')), ''), 'Nao informado'),
+      coalesce(nullif(trim(coalesce(new.raw_user_meta_data ->> 'cor', '')), ''), 'Nao informado'),
       coalesce(nullif(new.raw_user_meta_data ->> 'categoria', ''), 'passeio')
     )
-    on conflict (user_id) do nothing;
+    on conflict (user_id) do update
+    set
+      placa = excluded.placa,
+      modelo = excluded.modelo,
+      cor = excluded.cor,
+      categoria = excluded.categoria;
   end if;
 
   return new;
@@ -268,7 +273,7 @@ create or replace function public.atualizar_perfil_cliente(
   p_categoria text default 'passeio'
 )
 returns table (
-  user_id uuid,
+  cliente_id uuid,
   nome text,
   email text,
   tipo text,
@@ -322,7 +327,7 @@ begin
     coalesce(nullif(trim(coalesce(p_cor, '')), ''), 'Nao informado'),
     v_categoria
   )
-  on conflict (user_id) do update
+  on conflict on constraint veiculos_user_id_key do update
   set
     placa = excluded.placa,
     modelo = excluded.modelo,
@@ -331,7 +336,7 @@ begin
 
   return query
     select
-      u.id as user_id,
+      u.id as cliente_id,
       u.nome,
       u.email,
       u.tipo,
