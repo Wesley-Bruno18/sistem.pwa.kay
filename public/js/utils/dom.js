@@ -15,12 +15,16 @@ export function parseServiceList(value = '') {
 }
 
 export function disableWhile(button, text = 'Salvando...') {
-  const previous = button.textContent
+  if (!button) return () => undefined
+
+  const previous = button.innerHTML
   button.disabled = true
+  button.setAttribute('aria-busy', 'true')
   button.textContent = text
 
   return () => {
     button.disabled = false
-    button.textContent = previous
+    button.removeAttribute('aria-busy')
+    button.innerHTML = previous
   }
 }

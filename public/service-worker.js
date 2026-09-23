@@ -1,4 +1,4 @@
-const CACHE_NAME = 'auto-glow-pro-v20'
+const CACHE_NAME = 'auto-glow-pro-v21'
 
 const APP_SHELL = [
   './',
@@ -31,7 +31,8 @@ const APP_SHELL = [
 ]
 
 const CDN_ASSETS = [
-  'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.105.3/+esm'
+  'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.105.3/+esm',
+  'https://cdn.jsdelivr.net/npm/lucide@0.468.0/+esm'
 ]
 
 self.addEventListener('install', (event) => {

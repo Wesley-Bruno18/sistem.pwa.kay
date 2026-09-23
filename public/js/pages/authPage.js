@@ -11,96 +11,176 @@ import {
   SUPABASE_ANON_KEY,
   SUPABASE_URL
 } from '../services/supabase.js'
+import {
+  ArrowLeft,
+  ArrowRight,
+  CarFront,
+  Eye,
+  EyeOff,
+  LockKeyhole,
+  Mail,
+  Palette,
+  RectangleHorizontal,
+  UserRound,
+  createIcons
+} from 'lucide'
 import { showError, showToast } from '../components/toast.js'
-import { brand } from '../components/layout.js'
 import { disableWhile, escapeHtml } from '../utils/dom.js'
 
 export function renderAuthPage({ app, configured }) {
   app.innerHTML = `
     <main class="auth-screen">
-      <section class="auth-hero">
-        ${brand()}
-        <div>
-          <p class="eyebrow">PWA Supabase</p>
-          <h1>Gestao premium para estetica automotiva</h1>
-          <p class="hero-copy">
-            Agenda inteligente, planos, estoque e relatorios em uma interface rapida para celular e desktop.
-          </p>
-        </div>
-        <div class="hero-metrics">
-          <span><strong>1h20</strong> Servicos</span>
-          <span><strong>1</strong> Vaga por horario</span>
-          <span><strong>Offline</strong> Parcial</span>
-        </div>
-      </section>
+      <div class="auth-stage">
+        ${renderAuthBrand()}
 
-      <section class="auth-panel">
-        ${configured ? '' : renderSetupPanel()}
+        <section class="auth-panel" aria-label="Acesso ao Auto Glow Pro">
+          ${configured ? '' : renderSetupPanel()}
 
-        <div class="auth-tabs" role="tablist">
-          <button class="auth-tab is-active" type="button" data-auth-tab="login">Login</button>
-          <button class="auth-tab" type="button" data-auth-tab="signup">Cadastro</button>
-        </div>
-
-        <form id="loginForm" class="auth-form">
-          <label>
-            Email
-            <input name="email" type="email" autocomplete="email" required />
-          </label>
-          <label>
-            Senha
-            <input name="password" type="password" autocomplete="current-password" required />
-          </label>
-          <button class="primary-button" type="submit" ${configured ? '' : 'disabled'}>Entrar</button>
-          <button class="ghost-button full-button" type="button" id="forgotPassword" ${configured ? '' : 'disabled'}>Recuperar senha</button>
-        </form>
-
-        <form id="signupForm" class="auth-form is-hidden">
-          <div class="field-grid">
-            <label>
-              Nome
-              <input name="name" type="text" autocomplete="name" required />
-            </label>
-            <label>
-              Email
-              <input name="email" type="email" autocomplete="email" required />
-            </label>
+          <div class="auth-tabs" role="tablist" aria-label="Escolha como acessar">
+            <button
+              class="auth-tab is-active"
+              id="loginTab"
+              type="button"
+              role="tab"
+              aria-controls="loginForm"
+              aria-selected="true"
+              tabindex="0"
+              data-auth-tab="login"
+            >Entrar</button>
+            <button
+              class="auth-tab"
+              id="signupTab"
+              type="button"
+              role="tab"
+              aria-controls="signupForm"
+              aria-selected="false"
+              tabindex="-1"
+              data-auth-tab="signup"
+            >Criar conta</button>
           </div>
-          <label>
-            Senha
-            <input name="password" type="password" autocomplete="new-password" minlength="6" required />
-          </label>
-          <div class="field-grid">
-            <label>
-              Placa
-              <input name="plate" type="text" maxlength="8" placeholder="ABC1D23" required />
-            </label>
-            <label>
-              Modelo
-              <input name="model" type="text" placeholder="Civic, Corolla..." required />
-            </label>
-          </div>
-          <label>
-            Cor
-            <input name="color" type="text" placeholder="Preto, prata... (opcional)" />
-          </label>
-          <label>
-            Tipo do veiculo
-            <select name="vehicleType" required>
-              <option value="" selected disabled>Selecione o tipo</option>
-              <option value="passeio">Carro de passeio</option>
-              <option value="suv">SUV</option>
-              <option value="picape">Picape</option>
-              <option value="moto">Moto</option>
-            </select>
-          </label>
-          <button class="primary-button" type="submit" ${configured ? '' : 'disabled'}>Criar conta</button>
-        </form>
-      </section>
+
+          <form id="loginForm" class="auth-form" role="tabpanel" aria-labelledby="loginTab">
+            ${renderInputField({
+              id: 'loginEmail',
+              label: 'E-mail',
+              name: 'email',
+              type: 'email',
+              autocomplete: 'email',
+              placeholder: 'seu@email.com',
+              icon: 'mail'
+            })}
+            ${renderPasswordField({
+              id: 'loginPassword',
+              label: 'Senha',
+              name: 'password',
+              autocomplete: 'current-password',
+              placeholder: 'Sua senha'
+            })}
+            <div class="auth-form-link-row">
+              <button class="auth-text-button" type="button" id="forgotPassword" ${configured ? '' : 'disabled'}>
+                Esqueci a senha?
+              </button>
+            </div>
+            <button class="primary-button auth-submit" type="submit" ${configured ? '' : 'disabled'}>
+              <span>Entrar</span>
+              <i data-lucide="arrow-right" aria-hidden="true"></i>
+            </button>
+          </form>
+
+          <form
+            id="signupForm"
+            class="auth-form is-hidden"
+            role="tabpanel"
+            aria-labelledby="signupTab"
+            aria-hidden="true"
+          >
+            <div class="field-grid">
+              ${renderInputField({
+                id: 'signupName',
+                label: 'Nome',
+                name: 'name',
+                type: 'text',
+                autocomplete: 'name',
+                placeholder: 'Seu nome completo',
+                icon: 'user-round'
+              })}
+              ${renderInputField({
+                id: 'signupEmail',
+                label: 'E-mail',
+                name: 'email',
+                type: 'email',
+                autocomplete: 'email',
+                placeholder: 'seu@email.com',
+                icon: 'mail'
+              })}
+            </div>
+            ${renderPasswordField({
+              id: 'signupPassword',
+              label: 'Senha',
+              name: 'password',
+              autocomplete: 'new-password',
+              placeholder: 'Mínimo de 6 caracteres',
+              minlength: 6
+            })}
+            <div class="field-grid">
+              ${renderInputField({
+                id: 'signupPlate',
+                label: 'Placa',
+                name: 'plate',
+                type: 'text',
+                placeholder: 'ABC1D23',
+                icon: 'rectangle-horizontal',
+                maxlength: 8,
+                autocapitalize: 'characters'
+              })}
+              ${renderInputField({
+                id: 'signupModel',
+                label: 'Modelo',
+                name: 'model',
+                type: 'text',
+                placeholder: 'Civic, Corolla...',
+                icon: 'car-front'
+              })}
+            </div>
+            <div class="field-grid">
+              ${renderInputField({
+                id: 'signupColor',
+                label: 'Cor (opcional)',
+                name: 'color',
+                type: 'text',
+                placeholder: 'Preto, prata...',
+                icon: 'palette',
+                required: false
+              })}
+              <label class="auth-field" for="signupVehicleType">
+                <span class="auth-field-label">Tipo do veículo</span>
+                <span class="auth-input-wrap">
+                  <i data-lucide="car-front" aria-hidden="true"></i>
+                  <select id="signupVehicleType" name="vehicleType" required>
+                    <option value="" selected disabled>Selecione o tipo</option>
+                    <option value="passeio">Carro de passeio</option>
+                    <option value="suv">SUV</option>
+                    <option value="picape">Picape</option>
+                    <option value="moto">Moto</option>
+                  </select>
+                </span>
+              </label>
+            </div>
+            <button class="primary-button auth-submit" type="submit" ${configured ? '' : 'disabled'}>
+              <span>Criar conta</span>
+              <i data-lucide="arrow-right" aria-hidden="true"></i>
+            </button>
+          </form>
+        </section>
+
+        ${renderAuthFooter()}
+      </div>
     </main>
   `
 
+  renderAuthIcons()
   bindTabs()
+  bindPasswordToggles()
   bindAuthForms()
   bindSetupForm()
 }
@@ -108,38 +188,48 @@ export function renderAuthPage({ app, configured }) {
 export function renderPasswordResetPage({ app, onComplete }) {
   app.innerHTML = `
     <main class="auth-screen">
-      <section class="auth-hero">
-        ${brand()}
-        <div>
-          <p class="eyebrow">Seguranca</p>
-          <h1>Nova senha de acesso</h1>
-          <p class="hero-copy">
-            Defina uma nova senha para voltar ao painel com seguranca.
-          </p>
-        </div>
-        <div class="hero-metrics">
-          <span><strong>Email</strong> Validado</span>
-          <span><strong>Conta</strong> Protegida</span>
-          <span><strong>PWA</strong> Online</span>
-        </div>
-      </section>
+      <div class="auth-stage auth-stage-compact">
+        ${renderAuthBrand({
+          title: 'Nova senha',
+          subtitle: 'Defina uma nova senha para acessar sua conta.'
+        })}
 
-      <section class="auth-panel">
-        <form id="resetPasswordForm" class="auth-form">
-          <label>
-            Nova senha
-            <input name="password" type="password" autocomplete="new-password" minlength="6" required />
-          </label>
-          <label>
-            Confirmar senha
-            <input name="confirmPassword" type="password" autocomplete="new-password" minlength="6" required />
-          </label>
-          <button class="primary-button" type="submit">Salvar nova senha</button>
-          <button class="secondary-button" type="button" id="backToLogin">Voltar ao login</button>
-        </form>
-      </section>
+        <section class="auth-panel" aria-label="Definir nova senha">
+          <form id="resetPasswordForm" class="auth-form">
+            ${renderPasswordField({
+              id: 'resetPassword',
+              label: 'Nova senha',
+              name: 'password',
+              autocomplete: 'new-password',
+              placeholder: 'Mínimo de 6 caracteres',
+              minlength: 6
+            })}
+            ${renderPasswordField({
+              id: 'confirmPassword',
+              label: 'Confirmar senha',
+              name: 'confirmPassword',
+              autocomplete: 'new-password',
+              placeholder: 'Digite novamente',
+              minlength: 6
+            })}
+            <button class="primary-button auth-submit" type="submit">
+              <span>Salvar nova senha</span>
+              <i data-lucide="arrow-right" aria-hidden="true"></i>
+            </button>
+            <button class="auth-back-button" type="button" id="backToLogin">
+              <i data-lucide="arrow-left" aria-hidden="true"></i>
+              <span>Voltar ao login</span>
+            </button>
+          </form>
+        </section>
+
+        ${renderAuthFooter()}
+      </div>
     </main>
   `
+
+  renderAuthIcons()
+  bindPasswordToggles()
 
   document.querySelector('#resetPasswordForm')?.addEventListener('submit', async (event) => {
     event.preventDefault()
@@ -169,6 +259,126 @@ export function renderPasswordResetPage({ app, onComplete }) {
 
   document.querySelector('#backToLogin')?.addEventListener('click', async () => {
     await onComplete?.({ silent: true })
+  })
+}
+
+function renderAuthBrand({ title = 'Auto Glow', subtitle = 'Gestão inteligente para estética automotiva' } = {}) {
+  const isMainBrand = title === 'Auto Glow'
+
+  return `
+    <header class="auth-brand">
+      <div class="auth-logo" aria-hidden="true">AG</div>
+      <h1>${escapeHtml(title)}${isMainBrand ? ' <span>Pro</span>' : ''}</h1>
+      <p>${escapeHtml(subtitle)}</p>
+    </header>
+  `
+}
+
+function renderAuthFooter() {
+  return `
+    <footer class="auth-footer">
+      <p>ORGANIZE <span>•</span> CONTROLE <span>•</span> EVOLUA</p>
+      <small>Auto Glow • ${new Date().getFullYear()}</small>
+    </footer>
+  `
+}
+
+function renderInputField({
+  id,
+  label,
+  name,
+  type,
+  autocomplete = '',
+  placeholder = '',
+  icon,
+  required = true,
+  minlength,
+  maxlength,
+  autocapitalize
+}) {
+  const attributes = [
+    `id="${id}"`,
+    `name="${name}"`,
+    `type="${type}"`,
+    autocomplete ? `autocomplete="${autocomplete}"` : '',
+    placeholder ? `placeholder="${placeholder}"` : '',
+    required ? 'required' : '',
+    minlength ? `minlength="${minlength}"` : '',
+    maxlength ? `maxlength="${maxlength}"` : '',
+    autocapitalize ? `autocapitalize="${autocapitalize}"` : ''
+  ].filter(Boolean).join(' ')
+
+  return `
+    <label class="auth-field" for="${id}">
+      <span class="auth-field-label">${label}</span>
+      <span class="auth-input-wrap">
+        <i data-lucide="${icon}" aria-hidden="true"></i>
+        <input ${attributes} />
+      </span>
+    </label>
+  `
+}
+
+function renderPasswordField({ id, label, name, autocomplete, placeholder, minlength = '' }) {
+  return `
+    <label class="auth-field" for="${id}">
+      <span class="auth-field-label">${label}</span>
+      <span class="auth-input-wrap auth-password-wrap">
+        <i data-lucide="lock-keyhole" aria-hidden="true"></i>
+        <input
+          id="${id}"
+          name="${name}"
+          type="password"
+          autocomplete="${autocomplete}"
+          placeholder="${placeholder}"
+          ${minlength ? `minlength="${minlength}"` : ''}
+          required
+        />
+        <button
+          class="password-toggle"
+          type="button"
+          aria-label="Mostrar senha"
+          title="Mostrar senha"
+          aria-controls="${id}"
+          data-password-toggle="${id}"
+        >
+          <i data-lucide="eye" aria-hidden="true"></i>
+        </button>
+      </span>
+    </label>
+  `
+}
+
+function renderAuthIcons() {
+  createIcons({
+    icons: {
+      ArrowLeft,
+      ArrowRight,
+      CarFront,
+      Eye,
+      EyeOff,
+      LockKeyhole,
+      Mail,
+      Palette,
+      RectangleHorizontal,
+      UserRound
+    }
+  })
+}
+
+function bindPasswordToggles() {
+  document.querySelectorAll('[data-password-toggle]').forEach((button) => {
+    button.addEventListener('click', () => {
+      const input = document.getElementById(button.dataset.passwordToggle)
+      if (!input) return
+
+      const showing = input.type === 'text'
+      input.type = showing ? 'password' : 'text'
+      button.setAttribute('aria-label', showing ? 'Mostrar senha' : 'Ocultar senha')
+      button.title = showing ? 'Mostrar senha' : 'Ocultar senha'
+      button.innerHTML = `<i data-lucide="${showing ? 'eye' : 'eye-off'}" aria-hidden="true"></i>`
+      renderAuthIcons()
+    })
   })
 }
 
@@ -210,11 +420,18 @@ function bindTabs() {
 
 function switchAuthTab(selected) {
   document.querySelectorAll('[data-auth-tab]').forEach((tab) => {
-    tab.classList.toggle('is-active', tab.dataset.authTab === selected)
+    const active = tab.dataset.authTab === selected
+    tab.classList.toggle('is-active', active)
+    tab.setAttribute('aria-selected', String(active))
+    tab.tabIndex = active ? 0 : -1
   })
 
-  document.querySelector('#loginForm')?.classList.toggle('is-hidden', selected !== 'login')
-  document.querySelector('#signupForm')?.classList.toggle('is-hidden', selected !== 'signup')
+  const loginForm = document.querySelector('#loginForm')
+  const signupForm = document.querySelector('#signupForm')
+  loginForm?.classList.toggle('is-hidden', selected !== 'login')
+  signupForm?.classList.toggle('is-hidden', selected !== 'signup')
+  loginForm?.setAttribute('aria-hidden', String(selected !== 'login'))
+  signupForm?.setAttribute('aria-hidden', String(selected !== 'signup'))
 }
 
 function resetAuthForms() {
